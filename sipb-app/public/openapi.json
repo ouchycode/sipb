@@ -1,0 +1,770 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "SIPB UYM API",
+    "version": "1.0.0",
+    "description": "Dokumentasi API untuk Sistem Informasi Penemuan Barang (SIPB) UYM. Mencakup alur publik (pencarian, tracking, pelaporan mandiri via QR, AI Assistant) dan alur admin (dashboard, pengelolaan barang, aktivitas audit, manajemen user, ekspor laporan)."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Server lokal / default"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Public",
+      "description": "Endpoint akses publik untuk mahasiswa dan pengunjung"
+    },
+    {
+      "name": "AI Assistant",
+      "description": "Endpoint untuk interaksi chatbot bertenaga Groq AI"
+    },
+    {
+      "name": "Authentication",
+      "description": "Endpoint login dan logout admin"
+    },
+    {
+      "name": "Admin",
+      "description": "Endpoint khusus admin untuk manajemen lost & found dan operasional"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "tags": ["Public"],
+        "summary": "Halaman Utama Publik",
+        "description": "Menampilkan landing page publik beserta statistik barang posting, recovered, dan aktif.",
+        "responses": {
+          "200": {
+            "description": "Render halaman utama menggunakan Inertia"
+          }
+        }
+      }
+    },
+    "/cari": {
+      "get": {
+        "tags": ["Public"],
+        "summary": "Pencarian Barang Publik",
+        "description": "Mencari dan memfilter barang-barang temuan yang statusnya tersedia (tersedia) dalam 30 hari terakhir.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Kata kunci pencarian (nama barang, deskripsi, lokasi)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "description": "Kategori barang",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Lokasi penemuan barang",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "description": "Tanggal penemuan barang (YYYY-MM-DD)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Urutan data (newest, oldest, name, category, location)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["newest", "oldest", "name", "category", "location"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Render halaman pencarian barang dengan Inertia"
+          }
+        }
+      }
+    },
+    "/tracking": {
+      "get": {
+        "tags": ["Public"],
+        "summary": "Tracking Laporan Barang",
+        "description": "Melacak status penemuan barang berdasarkan kode tracking unik (misal: SIPB-UYM-XXXX-XX).",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "description": "Kode tracking unik barang",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Render status pelacakan barang dengan Inertia"
+          }
+        }
+      }
+    },
+    "/barang/{item}": {
+      "get": {
+        "tags": ["Public"],
+        "summary": "Detail Barang Publik",
+        "description": "Melihat detail barang temuan berdasarkan ID barang. Hanya menampilkan barang yang aktif/publik.",
+        "parameters": [
+          {
+            "name": "item",
+            "in": "path",
+            "description": "ID Barang",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Render detail barang temuan dengan Inertia"
+          },
+          "404": {
+            "description": "Barang tidak ditemukan atau sudah kadaluarsa (lebih dari 30 hari)"
+          }
+        }
+      }
+    },
+    "/ai/chat": {
+      "post": {
+        "tags": ["AI Assistant"],
+        "summary": "Interaksi AI Chatbot",
+        "description": "Mengirim riwayat percakapan untuk dijawab oleh AI Assistant berbasis model LLM Groq. Dibatasi throttle rate limit.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["messages"],
+                "properties": {
+                  "messages": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 12,
+                    "items": {
+                      "type": "object",
+                      "required": ["role", "content"],
+                      "properties": {
+                        "role": {
+                          "type": "string",
+                          "enum": ["user", "assistant"]
+                        },
+                        "content": {
+                          "type": "string",
+                          "maxLength": 1200
+                        }
+                      }
+                    }
+                  },
+                  "path": {
+                    "type": "string",
+                    "maxLength": 160,
+                    "description": "Path halaman saat ini untuk konteks AI"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Balasan dari AI Assistant beserta rekomendasi aksi navigasi",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reply": {
+                      "type": "string",
+                      "example": "Tentu, barang dompet hitam tersedia di Ruang Admin..."
+                    },
+                    "action": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["search", "tracking", "help"]
+                        },
+                        "label": {
+                          "type": "string",
+                          "example": "Cek tracking"
+                        },
+                        "url": {
+                          "type": "string",
+                          "example": "/tracking?code=SIPB-UYM-..."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Layanan AI mengalami kendala koneksi atau API Key belum diatur"
+          }
+        }
+      }
+    },
+    "/lapor-temuan/{token}": {
+      "get": {
+        "tags": ["Public"],
+        "summary": "Formulir Laporan Mandiri (QR)",
+        "description": "Membuka formulir laporan barang temuan mandiri oleh penemu menggunakan token QR bertandatangan (signed URL) dari admin.",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "description": "Token QR penemuan barang",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Render formulir input temuan dengan Inertia"
+          },
+          "302": {
+            "description": "Token tidak valid, kedaluwarsa, atau sudah pernah digunakan, dialihkan ke Halaman Utama"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Public"],
+        "summary": "Simpan Laporan Mandiri (QR)",
+        "description": "Menyimpan data barang temuan mandiri ke sistem sebagai draft dan menandai token QR sudah digunakan.",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "description": "Token QR penemuan barang",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "category", "description", "location", "found_at", "photo", "finder_name"],
+                "properties": {
+                  "name": { "type": "string", "maxLength": 120 },
+                  "category": { "type": "string", "maxLength": 80 },
+                  "description": { "type": "string", "maxLength": 1000 },
+                  "location": { "type": "string", "maxLength": 120 },
+                  "found_at": { "type": "string", "format": "date-time" },
+                  "photo": { "type": "string", "format": "binary", "description": "File gambar barang (maks 4MB)" },
+                  "finder_name": { "type": "string", "maxLength": 120 },
+                  "finder_nim": { "type": "string", "maxLength": 40 },
+                  "storage_location": { "type": "string", "maxLength": 120 },
+                  "admin_notes": { "type": "string", "maxLength": 1000 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "302": {
+            "description": "Berhasil menyimpan barang temuan, dialihkan ke halaman tracking barang terkait"
+          }
+        }
+      }
+    },
+    "/login": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Halaman Login Admin",
+        "description": "Menampilkan form login admin (hanya untuk guest).",
+        "responses": {
+          "200": {
+            "description": "Render halaman login dengan Inertia"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Proses Autentikasi Admin",
+        "description": "Melakukan verifikasi akun admin untuk membuat sesi login aktif.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "302": {
+            "description": "Berhasil login, dialihkan ke Dashboard Admin"
+          }
+        }
+      }
+    },
+    "/admin": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Dashboard Admin",
+        "description": "Menampilkan ringkasan statistik barang (tersedia, draft, kadaluarsa, diambil) dan grafik tren bulanan.",
+        "security": [{ "sessionAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Render halaman Dashboard Admin dengan Inertia"
+          }
+        }
+      }
+    },
+    "/admin/barang": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Daftar Barang Temuan (Admin)",
+        "description": "Mendapatkan daftar barang temuan berserta audit log. Mendukung pencarian, filter status, kategori, lokasi, dan pagination.",
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Pencarian nama, deskripsi, NIM pelapor/pengambil",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter status (draft, tersedia, kadaluarsa)",
+            "schema": { "type": "string", "enum": ["draft", "tersedia", "kadaluarsa"] }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Jumlah baris per halaman (10, 20, 50)",
+            "schema": { "type": "integer", "enum": [10, 20, 50] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Render daftar barang dengan Inertia"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Tambah Barang Baru (Admin)",
+        "description": "Menambahkan laporan barang temuan baru secara langsung oleh admin.",
+        "security": [{ "sessionAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "category", "description", "location", "found_at"],
+                "properties": {
+                  "name": { "type": "string", "maxLength": 255 },
+                  "category": { "type": "string", "maxLength": 100 },
+                  "description": { "type": "string", "maxLength": 2000 },
+                  "location": { "type": "string", "maxLength": 255 },
+                  "found_at": { "type": "string", "format": "date-time" },
+                  "photo": { "type": "string", "format": "binary" },
+                  "status": { "type": "string", "enum": ["draft", "tersedia"] },
+                  "finder_name": { "type": "string", "maxLength": 255 },
+                  "finder_nim": { "type": "string", "maxLength": 100 },
+                  "storage_location": { "type": "string", "maxLength": 255 },
+                  "admin_notes": { "type": "string", "maxLength": 1000 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "302": {
+            "description": "Berhasil menyimpan barang, dialihkan kembali dengan status sukses"
+          }
+        }
+      }
+    },
+    "/admin/barang/{item}": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Perbarui Data Barang (Admin)",
+        "description": "Memperbarui detail data barang temuan. Hanya bisa dilakukan jika status barang masih belum dipublish (tersedia). Menggunakan POST untuk mendukung upload multipart file foto.",
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "item",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "category", "description", "location", "found_at"],
+                "properties": {
+                  "name": { "type": "string", "maxLength": 255 },
+                  "category": { "type": "string", "maxLength": 100 },
+                  "description": { "type": "string", "maxLength": 2000 },
+                  "location": { "type": "string", "maxLength": 255 },
+                  "found_at": { "type": "string", "format": "date-time" },
+                  "photo": { "type": "string", "format": "binary" },
+                  "finder_name": { "type": "string", "maxLength": 255 },
+                  "finder_nim": { "type": "string", "maxLength": 100 },
+                  "storage_location": { "type": "string", "maxLength": 255 },
+                  "admin_notes": { "type": "string", "maxLength": 1000 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "302": {
+            "description": "Berhasil memperbarui barang atau error jika barang sudah tampil publik (tersedia)"
+          }
+        }
+      }
+    },
+    "/admin/barang/{item}/status": {
+      "patch": {
+        "tags": ["Admin"],
+        "summary": "Perbarui Status Barang (Validasi Serah Terima)",
+        "description": "Mengubah status barang (ke draft, tersedia, atau sudah_diambil). Jika status diubah ke 'sudah_diambil', wajib mengisi data pengambil, catatan validasi, serta mencentang checklist serah terima barang.",
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "item",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["draft", "tersedia", "sudah_diambil"] },
+                  "claimant_name": { "type": "string", "description": "Wajib jika status adalah sudah_diambil" },
+                  "claimant_nim": { "type": "string" },
+                  "validation_notes": { "type": "string" },
+                  "pickup_checklist": {
+                    "type": "object",
+                    "properties": {
+                      "identity_checked": { "type": "boolean" },
+                      "ownership_checked": { "type": "boolean" },
+                      "condition_checked": { "type": "boolean" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "302": {
+            "description": "Status barang berhasil diubah beserta pencatatan audit log"
+          }
+        }
+      }
+    },
+    "/admin/barang/bulk": {
+      "patch": {
+        "tags": ["Admin"],
+        "summary": "Aksi Masal Barang (Bulk Action)",
+        "description": "Mengubah status sekumpulan barang temuan secara massal kembali menjadi draft.",
+        "security": [{ "sessionAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["ids", "action"],
+                "properties": {
+                  "ids": {
+                    "type": "array",
+                    "items": { "type": "integer" }
+                  },
+                  "action": { "type": "string", "enum": ["draft"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "302": {
+            "description": "Berhasil memproses bulk action"
+          }
+        }
+      }
+    },
+    "/admin/history": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Riwayat Barang Diambil (Admin)",
+        "description": "Menampilkan daftar barang temuan yang sudah diserahkan ke pemiliknya (status: sudah_diambil).",
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Kata kunci pencarian riwayat (mencari nama barang, deskripsi, pelapor, NIM pelapor, pengambil, NIM pengambil)",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Render halaman riwayat penyerahan dengan Inertia"
+          }
+        }
+      }
+    },
+    "/admin/aktivitas": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Log Aktivitas Audit Status (Admin)",
+        "description": "Melihat catatan riwayat audit perubahan status barang temuan.",
+        "security": [{ "sessionAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Render halaman log aktivitas audit dengan Inertia"
+          }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Kelola Pengguna Admin",
+        "description": "Melihat daftar administrator aplikasi.",
+        "security": [{ "sessionAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Render manajemen user admin dengan Inertia"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Tambah User Admin Baru",
+        "description": "Mendaftarkan user admin baru ke sistem.",
+        "security": [{ "sessionAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password", "role"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string" },
+                  "role": { "type": "string", "enum": ["admin", "superadmin"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "302": {
+            "description": "User admin berhasil dibuat"
+          }
+        }
+      }
+    },
+    "/admin/users/{user}": {
+      "patch": {
+        "tags": ["Admin"],
+        "summary": "Perbarui User Admin",
+        "description": "Memperbarui data profil/role admin.",
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Profil admin berhasil diperbarui"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Admin"],
+        "summary": "Hapus User Admin",
+        "description": "Menghapus akun admin dari database.",
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "User admin berhasil dihapus"
+          }
+        }
+      }
+    },
+    "/admin/notifications": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "API Notifikasi Barang Draft",
+        "description": "Endpoint JSON internal untuk polling notifikasi barang baru berstatus draft (pending approval).",
+        "security": [{ "sessionAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Objek JSON berisi total barang draft dan daftar 5 laporan draft terbaru",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pending_reports": { "type": "integer", "example": 3 },
+                    "latest_reports": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "integer" },
+                          "name": { "type": "string" },
+                          "category": { "type": "string" },
+                          "location": { "type": "string" },
+                          "status": { "type": "string" },
+                          "created_at": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/export": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Ekspor Laporan CSV",
+        "description": "Mendownload file CSV berisi seluruh data barang temuan di sistem.",
+        "security": [{ "sessionAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "File stream download dengan mime-type text/csv"
+          }
+        }
+      }
+    },
+    "/admin/export-excel": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Ekspor Laporan Excel (XLS)",
+        "description": "Mendownload file Excel (.xls) berisi rangkuman data barang temuan.",
+        "security": [{ "sessionAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "File stream download dengan mime-type application/vnd.ms-excel"
+          }
+        }
+      }
+    },
+    "/admin/barang/{item}/tanda-terima": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Cetak Tanda Terima Barang",
+        "description": "Menampilkan format halaman cetak tanda terima penyerahan barang.",
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "item",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Render halaman cetak print receipt dengan Inertia"
+          }
+        }
+      }
+    },
+    "/admin/logout": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Logout Admin",
+        "description": "Menghapus sesi login admin aktif.",
+        "security": [{ "sessionAuth": [] }],
+        "responses": {
+          "302": {
+            "description": "Sesi berakhir, dialihkan ke halaman Login"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sessionAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "laravel_session",
+        "description": "Autentikasi berbasis cookie session Laravel standar."
+      }
+    }
+  }
+}
