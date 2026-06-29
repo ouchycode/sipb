@@ -4,6 +4,7 @@ import {
     Archive,
     CalendarDays,
     ClipboardList,
+    Download,
     Filter,
     History,
     MapPin,
@@ -90,8 +91,16 @@ function closeImagePreview() {
     previewImage.value = null;
 }
 
+function itemStatusLabel(item) {
+    return item.claimed_at ? statusLabel(item.status) : 'Kadaluarsa';
+}
+
+function itemStatusClass(item) {
+    return item.claimed_at ? statusClass(item.status) : statusClass('kadaluarsa');
+}
+
 onMounted(() => {
-    removePageStartListener = router.on("start", () => {
+    removePageStartListener = router.on("start", (visit) => {
         pageLoading.value = true;
     });
     removePageFinishListener = router.on("finish", () => {
@@ -215,9 +224,9 @@ onBeforeUnmount(() => {
             <div class="grid gap-3 p-4 md:hidden">
                 <template v-if="pageLoading">
                     <article
-                        v-for="index in 4"
+                        v-for="index in skeletonRows"
                         :key="`history-card-skeleton-${index}`"
-                        class="rounded-md bg-white p-4 shadow-[0_8px_22px_rgba(220,221,234,0.28)]"
+                        class="rounded-md sipb-panel p-4"
                     >
                         <div class="flex gap-3">
                             <span
@@ -246,7 +255,7 @@ onBeforeUnmount(() => {
                     <article
                         v-for="item in itemRows"
                         :key="`history-card-${item.id}`"
-                        class="rounded-md bg-white p-4 shadow-[0_8px_22px_rgba(220,221,234,0.28)]"
+                        class="rounded-md sipb-panel p-4"
                     >
                         <div class="flex gap-3">
                             <button
@@ -276,10 +285,10 @@ onBeforeUnmount(() => {
                                 <span
                                     :class="[
                                         'mt-2 inline-flex rounded-md border px-2.5 py-1 text-xs font-medium',
-                                        statusClass(item.status),
+                                        itemStatusClass(item),
                                     ]"
                                 >
-                                    {{ statusLabel(item.status) }}
+                                    {{ itemStatusLabel(item) }}
                                 </span>
                             </div>
                         </div>
@@ -319,21 +328,30 @@ onBeforeUnmount(() => {
                                 >
                                 {{ item.manager?.name || "-" }}
                             </p>
+                            <a
+                                :href="`/admin/barang/${item.id}/tanda-terima`"
+                                target="_blank"
+                                class="mt-3 inline-flex items-center gap-1.5 rounded-md border border-[#2737c9] px-3 py-1.5 text-xs font-bold text-[#2737c9] transition-colors hover:bg-[#2737c9] hover:text-white"
+                            >
+                                <Download class="h-3.5 w-3.5" />
+                                Tanda terima
+                            </a>
                         </div>
                     </article>
                 </template>
             </div>
             <div class="hidden overflow-x-auto md:block">
-                <table class="min-w-[1220px] w-full text-sm">
+                <table class="min-w-[1320px] w-full text-sm">
                     <colgroup>
                         <col class="w-[50px]" />
-                        <col class="w-[270px]" />
-                        <col class="w-[170px]" />
-                        <col class="w-[160px]" />
-                        <col class="w-[160px]" />
                         <col class="w-[240px]" />
-                        <col class="w-[150px]" />
-                        <col class="w-[170px]" />
+                        <col class="w-[160px]" />
+                        <col class="w-[140px]" />
+                        <col class="w-[140px]" />
+                        <col class="w-[210px]" />
+                        <col class="w-[130px]" />
+                        <col class="w-[130px]" />
+                        <col class="w-[120px]" />
                     </colgroup>
                     <thead class="border-b border-[#e2e8f0] text-left">
                         <tr>
@@ -361,6 +379,9 @@ onBeforeUnmount(() => {
                             <th class="px-4 py-3 font-bold text-[#1a2134]">
                                 Status
                             </th>
+                            <th class="px-4 py-3 font-bold text-[#1a2134]">
+                                Aksi
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -370,10 +391,10 @@ onBeforeUnmount(() => {
                                 :key="`history-row-skeleton-${index}`"
                                 class="align-middle"
                             >
-                                <td class="px-4 py-3">
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
                                     <div class="flex items-center gap-3">
                                         <span
-                                            class="sipb-skeleton h-12 w-14 shrink-0"
+                                            :class="['sipb-skeleton shrink-0', isDenseTable ? 'h-9 w-11' : 'h-12 w-14']"
                                         ></span>
                                         <div class="min-w-0 flex-1 space-y-2">
                                             <span
@@ -385,16 +406,16 @@ onBeforeUnmount(() => {
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-4 py-3">
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
                                     <span class="sipb-skeleton h-4 w-32"></span>
                                 </td>
-                                <td class="px-4 py-3">
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
                                     <span class="sipb-skeleton h-4 w-28"></span>
                                 </td>
-                                <td class="px-4 py-3">
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
                                     <span class="sipb-skeleton h-4 w-28"></span>
                                 </td>
-                                <td class="px-4 py-3">
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
                                     <div class="space-y-2">
                                         <span
                                             class="sipb-skeleton h-4 w-32"
@@ -404,11 +425,14 @@ onBeforeUnmount(() => {
                                         ></span>
                                     </div>
                                 </td>
-                                <td class="px-4 py-3">
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
                                     <span class="sipb-skeleton h-4 w-24"></span>
                                 </td>
-                                <td class="px-4 py-3">
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
                                     <span class="sipb-skeleton h-7 w-28"></span>
+                                </td>
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
+                                    <span class="sipb-skeleton h-7 w-20"></span>
                                 </td>
                             </tr>
                         </template>
@@ -417,7 +441,7 @@ onBeforeUnmount(() => {
                             class="border-b border-[#f1f5f9] bg-white"
                         >
                             <td
-                                colspan="8"
+                                colspan="9"
                                 class="px-4 py-8 text-center text-[#747a8b]"
                             >
                                 Belum ada history barang selesai.
@@ -548,11 +572,21 @@ onBeforeUnmount(() => {
                                 <span
                                     :class="[
                                         'inline-flex whitespace-nowrap rounded-md border px-2.5 py-1 text-xs font-medium',
-                                        statusClass(item.status),
+                                        itemStatusClass(item),
                                     ]"
                                 >
-                                    {{ statusLabel(item.status) }}
+                                    {{ itemStatusLabel(item) }}
                                 </span>
+                            </td>
+                            <td class="px-4 py-3 align-middle">
+                                <a
+                                    :href="`/admin/barang/${item.id}/tanda-terima`"
+                                    target="_blank"
+                                    class="inline-flex items-center gap-1.5 rounded-md border border-[#2737c9] px-2.5 py-1.5 text-xs font-bold text-[#2737c9] transition-colors hover:bg-[#2737c9] hover:text-white"
+                                >
+                                    <Download class="h-3.5 w-3.5" />
+                                    Cetak
+                                </a>
                             </td>
                         </tr>
                     </tbody>

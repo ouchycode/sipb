@@ -65,7 +65,7 @@ function closeImagePreview() {
             </div>
 
             <aside class="sipb-accent-panel h-max p-5 lg:sticky lg:top-6">
-                <div class="mb-5 rounded-md bg-white p-4 shadow-[0_10px_28px_rgba(203,213,225,0.24)]">
+                <div class="mb-5 sipb-panel p-4">
                     <div class="flex items-start gap-3">
                         <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-[#2737c9] text-white">
                             <ClipboardCheck class="h-5 w-5" />

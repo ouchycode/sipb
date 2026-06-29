@@ -50,7 +50,7 @@ class AdminItemController extends Controller
                 'total' => FoundItem::count(),
                 'available' => FoundItem::where('status', 'tersedia')->count(),
                 'claimed' => FoundItem::where('status', 'sudah_diambil')->count(),
-                'expired' => FoundItem::where('status', 'kadaluarsa')->count(),
+                'expired' => FoundItem::where('status', 'sudah_diambil')->whereNull('claimed_at')->count(),
             ],
             'latest' => $latest,
             'insights' => [
@@ -105,7 +105,7 @@ class AdminItemController extends Controller
         $this->lifecycleService->syncExpiredItems();
 
         $filters = $request->only(['q', 'status', 'category', 'location', 'per_page']);
-        $allowedStatuses = ['tersedia', 'kadaluarsa'];
+        $allowedStatuses = ['tersedia'];
         $perPage = (int) ($filters['per_page'] ?? 10);
         $perPage = in_array($perPage, [10, 20, 50], true) ? $perPage : 10;
         $filters['per_page'] = $perPage;
@@ -146,6 +146,8 @@ class AdminItemController extends Controller
 
     public function activity(Request $request): Response
     {
+        abort_unless($request->user()?->isSuperAdmin(), 403);
+
         $filters = $request->only(['q', 'date', 'action', 'per_page']);
         $perPage = (int) ($filters['per_page'] ?? 10);
         $perPage = in_array($perPage, [10, 20, 50], true) ? $perPage : 10;
@@ -184,6 +186,7 @@ class AdminItemController extends Controller
                 'notes' => $audit->notes,
                 'ip_address' => $audit->ip_address,
                 'created_at' => $audit->created_at?->toISOString(),
+                // IP address anonymized before storage — see StatusAuditLogger
             ]);
 
         $dailyStats = (clone $baseQuery)
@@ -214,8 +217,14 @@ class AdminItemController extends Controller
         ]);
     }
 
-    public function printReceipt(FoundItem $item): Response
+    public function printReceipt(Request $request, FoundItem $item): Response|RedirectResponse
     {
+        if ($item->status !== 'sudah_diambil') {
+            return redirect()->back()->with('error', 'Barang belum diambil, tidak bisa mencetak tanda terima.');
+        }
+
+        $this->auditLogger->log($item, $item->status, $item->status, 'print_receipt', $request->user()->id, 'Tanda terima dicetak.');
+
         return Inertia::render('Admin/PrintReceipt', [
             'item' => $this->payloadService->admin($item),
         ]);
@@ -259,6 +268,31 @@ class AdminItemController extends Controller
         ]);
     }
 
+    private function sanitizeCsvField(?string $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+
+        if (in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'" . $value;
+        }
+
+        return $value;
+    }
+
+    private function maskNim(?string $nim): string
+    {
+        if ($nim === null || $nim === '') {
+            return '';
+        }
+
+        $visible = substr($nim, -3);
+        $masked = str_repeat('*', max(0, strlen($nim) - 3));
+
+        return $masked . $visible;
+    }
+
     public function export(): StreamedResponse
     {
         $this->lifecycleService->syncExpiredItems();
@@ -291,20 +325,20 @@ class AdminItemController extends Controller
                         fputcsv($handle, [
                             $item->id,
                             'Temuan',
-                            $item->name,
+                            $this->sanitizeCsvField($item->name),
                             $item->category,
                             $item->location,
                             $item->found_at?->format('Y-m-d H:i:s'),
                             $item->status,
-                            $item->finder_name,
-                            $item->finder_nim,
-                            $item->claimant_name,
-                            $item->claimant_nim,
+                            $this->sanitizeCsvField($item->finder_name),
+                            $this->maskNim($item->finder_nim),
+                            $this->sanitizeCsvField($item->claimant_name),
+                            $this->maskNim($item->claimant_nim),
                             $item->published_at?->format('Y-m-d H:i:s'),
                             $item->claimed_at?->format('Y-m-d H:i:s'),
                             $item->expired_at?->format('Y-m-d H:i:s'),
-                            $item->admin_notes,
-                            $item->validation_notes,
+                            $this->sanitizeCsvField($item->admin_notes),
+                            $this->sanitizeCsvField($item->validation_notes),
                         ]);
                     }
                 });
@@ -335,9 +369,9 @@ class AdminItemController extends Controller
                             $item->found_at?->format('Y-m-d H:i:s'),
                             $item->status,
                             $item->finder_name,
-                            $item->finder_nim,
+                            $this->maskNim($item->finder_nim),
                             $item->claimant_name,
-                            $item->claimant_nim,
+                            $this->maskNim($item->claimant_nim),
                             $item->published_at?->format('Y-m-d H:i:s'),
                             $item->claimed_at?->format('Y-m-d H:i:s'),
                             $item->admin_notes,
@@ -364,17 +398,14 @@ class AdminItemController extends Controller
     {
         $data = $this->validatedCreate($request);
 
-        if ($request->hasFile('photo')) {
-            $file = $request->file('photo');
-            $data['photo_data'] = sprintf(
-                'data:%s;base64,%s',
-                $file->getMimeType(),
-                base64_encode(file_get_contents($file->getRealPath()))
-            );
+        $uploaded = \App\Models\UploadedPhoto::find($request->integer('uploaded_photo_id'));
+        if ($uploaded) {
+            $data['photo_data'] = $uploaded->photo_data;
             $data['photo_url'] = 'database:image';
+            $uploaded->update(['used_at' => now()]);
         }
 
-        unset($data['photo']);
+        unset($data['uploaded_photo_id']);
 
         $statusData = $request->validate([
             'status' => ['nullable', 'in:tersedia'],
@@ -400,15 +431,28 @@ class AdminItemController extends Controller
 
         if ($request->hasFile('photo')) {
             $file = $request->file('photo');
+            $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+            $mime = $file->getMimeType();
+            if (!in_array($mime, $allowedMimes, true)) {
+                return back()->with('error', 'Foto harus berupa JPG, PNG, atau WEBP.');
+            }
             $data['photo_data'] = sprintf(
                 'data:%s;base64,%s',
-                $file->getMimeType(),
+                $mime,
                 base64_encode($file->getContent()),
             );
             $data['photo_url'] = 'database:image';
+        } elseif ($request->filled('uploaded_photo_id')) {
+            $uploaded = \App\Models\UploadedPhoto::find($request->integer('uploaded_photo_id'));
+            if ($uploaded) {
+                $data['photo_data'] = $uploaded->photo_data;
+                $data['photo_url'] = 'database:image';
+                $uploaded->update(['used_at' => now()]);
+            }
         }
 
         unset($data['photo']);
+        unset($data['uploaded_photo_id']);
 
         $item->fill($data);
         $item->managed_by = $request->user()->id;
@@ -438,13 +482,11 @@ class AdminItemController extends Controller
         $item->managed_by = $request->user()->id;
         $item->validation_notes = $data['validation_notes'] ?? $item->validation_notes;
 
-        if ($item->status === 'tersedia' && ($item->published_at === null || $from === 'kadaluarsa')) {
+        if ($item->status === 'tersedia' && $item->published_at === null) {
             $item->published_at = now();
         }
 
-        if ($item->status === 'draft') {
-            $item->published_at = null;
-        }
+
 
         if ($item->status === 'sudah_diambil') {
             $checklist = $data['pickup_checklist'] ?? [];
@@ -478,6 +520,10 @@ class AdminItemController extends Controller
 
     public function destroy(Request $request, FoundItem $item): RedirectResponse
     {
+        if (!$request->user()->isSuperAdmin()) {
+            return back()->with('error', 'Hanya super admin yang dapat menghapus data barang.');
+        }
+
         $this->auditLogger->log($item, $item->status, $item->status, 'admin_delete', $request->user()->id, 'Data barang dihapus oleh admin.');
         $item->delete();
 
@@ -492,8 +538,7 @@ class AdminItemController extends Controller
             'description' => ['required', 'string', 'max:1000'],
             'location' => ['required', 'string', 'max:120'],
             'found_at' => ['required', 'date'],
-            'photo' => ['required', 'image', 'max:4096'],
-            'photo_url' => ['required_without:photo', 'nullable', 'url', 'max:500'],
+            'uploaded_photo_id' => ['required', 'integer', 'exists:uploaded_photos,id'],
             'finder_name' => ['required', 'string', 'max:120'],
             'finder_nim' => ['nullable', 'string', 'max:40'],
             'storage_location' => ['nullable', 'string', 'max:120'],
@@ -511,6 +556,7 @@ class AdminItemController extends Controller
             'location' => ['required', 'string', 'max:255'],
             'found_at' => ['required', 'date'],
             'photo' => ['nullable', 'image', 'max:4096'],
+            'uploaded_photo_id' => ['nullable', 'integer', 'exists:uploaded_photos,id'],
             'finder_name' => ['nullable', 'string', 'max:255'],
             'finder_nim' => ['nullable', 'string', 'max:100'],
             'storage_location' => ['nullable', 'string', 'max:255'],
@@ -543,9 +589,7 @@ class AdminItemController extends Controller
             'pickup_checklist' => $item->pickup_checklist,
             'manager' => $item->manager?->only('name', 'email'),
             'is_expired' => $item->is_expired,
-            'duplicate_candidates' => $item->status === 'draft'
-                ? $this->duplicateCandidates($item)
-                : [],
+            'duplicate_candidates' => [],
             'audits' => $item->relationLoaded('audits')
                 ? $item->audits
                     ->sortByDesc('created_at')

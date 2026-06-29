@@ -13,7 +13,7 @@ use App\Services\FoundItemLifecycleService;
 
 Artisan::command('sipb:expire-items', function (FoundItemLifecycleService $service) {
     $result = $service->syncExpiredItems();
-    $this->info($result['expired'].' barang otomatis ditandai kadaluarsa.');
-})->purpose('Menandai barang tersedia yang lewat 30 hari sebagai kadaluarsa.');
+    $this->info($result['expired'].' barang otomatis dipindahkan ke history (kadaluarsa).');
+})->purpose('Memindahkan barang tersedia yang lewat 30 hari ke history.');
 
 Schedule::command('sipb:expire-items')->dailyAt('00:10');

@@ -5,26 +5,24 @@ import {
     Bell,
     CheckCircle2,
     ChevronRight,
+    ChevronDown,
     ClipboardList,
     HelpCircle,
     History,
     Home,
+    Image,
     LayoutDashboard,
     ListChecks,
     LogOut,
+    LogIn,
     Search,
+    User,
     UsersRound,
     X,
 } from "@lucide/vue";
-import { Toaster, toast } from 'vue-sonner';
-import 'vue-sonner/style.css';
-import {
-    computed,
-    onBeforeUnmount,
-    onMounted,
-    ref,
-    watch,
-} from "vue";
+import { Toaster, toast } from "vue-sonner";
+import "vue-sonner/style.css";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import AiChatWidget from "./AiChatWidget.vue";
 
 const props = defineProps({
@@ -50,12 +48,9 @@ const page = usePage();
 const isLoading = ref(false);
 const publicSidebarOpen = ref(false);
 const adminSidebarOpen = ref(false);
+const profileDropdownOpen = ref(false);
 const reportDropdownOpen = ref(false);
 const dismissedFlashKey = ref("");
-const notificationState = ref({
-    pending_reports: page.props.notifications?.pending_reports ?? 0,
-    latest_reports: page.props.notifications?.latest_reports ?? [],
-});
 const isPublicHome = computed(() => page.url === "/");
 const isAdminDashboard = computed(() => props.admin && page.url === "/admin");
 const hasPublicSidebar = computed(
@@ -66,13 +61,6 @@ const showAiAssistant = computed(
         !props.admin &&
         !page.url.startsWith("/login") &&
         !page.url.startsWith("/lapor-temuan"),
-);
-const pendingReports = computed(
-    () => notificationState.value.pending_reports ?? 0,
-);
-const notificationBadge = computed(() => pendingReports.value);
-const latestReports = computed(
-    () => notificationState.value.latest_reports ?? [],
 );
 
 const publicNavItems = computed(() => {
@@ -108,32 +96,37 @@ const adminNavItems = computed(() =>
             href: "/admin",
             label: "Dashboard",
             icon: LayoutDashboard,
-            show: Boolean(page.props.auth.user),
+            show: Boolean(page.props.auth?.user),
         },
         {
             href: "/admin/barang",
             label: "Kelola Barang",
             icon: ClipboardList,
-            badge: notificationBadge.value,
-            show: Boolean(page.props.auth.user),
+            show: Boolean(page.props.auth?.user),
+        },
+        {
+            href: "/admin/foto",
+            label: "Upload Foto",
+            icon: Image,
+            show: Boolean(page.props.auth?.user),
         },
         {
             href: "/admin/history",
             label: "History",
             icon: History,
-            show: Boolean(page.props.auth.user),
+            show: Boolean(page.props.auth?.user),
         },
         {
             href: "/admin/aktivitas",
             label: "Log Aktivitas",
             icon: ListChecks,
-            show: Boolean(page.props.auth.user),
+            show: Boolean(page.props.auth?.user?.is_super_admin),
         },
         {
             href: "/admin/users",
             label: "Kelola User",
             icon: UsersRound,
-            show: Boolean(page.props.auth.user?.is_super_admin),
+            show: Boolean(page.props.auth?.user?.is_super_admin),
         },
     ].filter((item) => item.show),
 );
@@ -144,9 +137,6 @@ const mobileMenuIcon =
     "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDIiIGhlaWdodD0iNDIiIHZpZXdCb3g9IjAgMCA0MiA0MiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjEiIGN5PSIyMSIgcj0iMjEiIGZpbGw9IiMxNjE4MUUiLz4KPHBhdGggZD0iTTEzIDE1QzEzIDE0LjQ0NzcgMTMuNDQ3NyAxNCAxNCAxNEgyNkMyNi41NTIzIDE0IDI3IDE0LjQ0NzcgMjcgMTVDMjcgMTUuNTUyMyAyNi41NTIzIDE2IDI2IDE2SDE0QzEzLjQ0NzcgMTYgMTMgMTUuNTUyMyAxMyAxNVoiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0xMyAyMUMxMyAyMC40NDc3IDEzLjQ0NzcgMjAgMTQgMjBIMjlDMjkuNTUyMyAyMCAzMCAyMC40NDc3IDMwIDIxQzMwIDIxLjU1MjMgMjkuNTUyMyAyMiAyOSAyMkgxNEMxMy40NDc3IDIyIDEzIDIxLjU1MjMgMTMgMjFaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMjIgMjdDMjIgMjYuNDQ3NyAyMS41NTIzIDI2IDIxIDI2SDE0QzEzLjQ0NzcgMjYgMTMgMjYuNDQ3NyAxMyAyN0MxMyAyNy41NTIzIDEzLjQ0NzcgMjggMTQgMjhIMjFDMjEuNTUyMyAyOCAyMiAyNy41NTIzIDIyIDI3WiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+Cg==";
 let removeStartListener = null;
 let removeFinishListener = null;
-let notificationTimer = null;
-
-let removeSuccessListener = null;
 
 function openAdminSidebar() {
     adminSidebarOpen.value = true;
@@ -167,6 +157,10 @@ const breadcrumbs = computed(() => {
 
     if (page.url.startsWith("/admin/users")) {
         return ["Admin", "Kelola User"];
+    }
+
+    if (page.url.startsWith("/admin/foto")) {
+        return ["Admin", "Upload Foto"];
     }
 
     if (page.url === "/admin") {
@@ -193,6 +187,7 @@ const adminPageTitle = computed(() => {
     if (page.url.startsWith("/admin/history")) return "History";
     if (page.url.startsWith("/admin/aktivitas")) return "Log Aktivitas";
     if (page.url.startsWith("/admin/users")) return "Kelola User";
+    if (page.url.startsWith("/admin/foto")) return "Upload Foto";
     if (page.url === "/admin") return "Beranda";
     return props.title;
 });
@@ -236,48 +231,37 @@ onMounted(() => {
         adminSidebarOpen.value = false;
     });
 
-    removeSuccessListener = router.on("success", (event) => {
-        const flash = event.detail.page.props.flash;
-        if (flash?.success) {
-            toast.success("Berhasil", { description: flash.success });
-        }
-        if (flash?.error) {
-            toast.error("Ada yang perlu dicek", { description: flash.error });
-        }
-    });
+    watch(
+        () => page.props.flash,
+        (flash) => {
+            if (flash?.success) {
+                toast.success("Berhasil", { description: flash.success });
+            }
+            if (flash?.error) {
+                toast.error("Ada yang perlu dicek", {
+                    description: flash.error,
+                });
+            }
+        },
+        { deep: true },
+    );
 
     const initialFlash = page.props.flash;
     if (initialFlash?.success) {
         toast.success("Berhasil", { description: initialFlash.success });
     }
     if (initialFlash?.error) {
-        toast.error("Ada yang perlu dicek", { description: initialFlash.error });
+        toast.error("Ada yang perlu dicek", {
+            description: initialFlash.error,
+        });
     }
 
     window.addEventListener("sipb:open-admin-sidebar", openAdminSidebar);
-
-    if (props.admin && page.props.auth.user) {
-        notificationTimer = window.setInterval(async () => {
-            try {
-                const response = await fetch("/admin/notifications", {
-                    headers: { Accept: "application/json" },
-                });
-
-                if (response.ok) {
-                    notificationState.value = await response.json();
-                }
-            } catch {
-                // Polling notifikasi sengaja diam agar tidak mengganggu kerja admin.
-            }
-        }, 25000);
-    }
 });
 
 onBeforeUnmount(() => {
     if (removeStartListener) removeStartListener();
     if (removeFinishListener) removeFinishListener();
-    if (removeSuccessListener) removeSuccessListener();
-    if (notificationTimer) window.clearInterval(notificationTimer);
     window.removeEventListener("sipb:open-admin-sidebar", openAdminSidebar);
 });
 </script>
@@ -296,14 +280,16 @@ onBeforeUnmount(() => {
                 <img
                     :src="campusLogo"
                     alt="Universitas Yatsi Madani"
-                    class="h-24 w-24 object-contain"
+                    class="h-36 w-36 object-contain"
                 />
             </Link>
 
             <!-- User Profile Box -->
-            <div class="px-4 pb-4">
-                <div
-                    class="rounded-lg bg-[#2737c9] px-4 py-4 text-white shadow-[0_10px_24px_rgba(39,55,201,0.18)]"
+            <div class="px-4 pb-4 relative">
+                <button
+                    type="button"
+                    class="w-full text-left rounded-lg bg-[#2737c9] px-4 py-4 text-white shadow-[0_10px_24px_rgba(39,55,201,0.18)] transition-all hover:bg-[#202da8]"
+                    @click="profileDropdownOpen = !profileDropdownOpen"
                 >
                     <div class="flex items-center gap-3">
                         <img
@@ -313,23 +299,53 @@ onBeforeUnmount(() => {
                         />
                         <div class="min-w-0">
                             <p
-                                class="truncate text-sm font-extrabold leading-tight"
+                                class="truncate text-sm font-extrabold leading-tight uppercase"
                             >
-                                {{ page.props.auth.user?.name || "Publik" }}
+                                {{ page.props.auth?.user?.name || "Admin" }}
                             </p>
                             <p class="text-xs font-medium text-white/75">
                                 {{
-                                    page.props.auth.user?.is_super_admin
+                                    page.props.auth?.user?.is_super_admin
                                         ? "Super Admin"
                                         : "Admin"
                                 }}
                             </p>
                         </div>
-                        <ChevronRight
-                            class="ml-auto h-4 w-4 shrink-0 text-white/50"
+                        <ChevronDown
+                            class="ml-auto h-4 w-4 shrink-0 text-white/80 transition-transform"
+                            :class="{ 'rotate-180': profileDropdownOpen }"
                         />
                     </div>
-                </div>
+                </button>
+
+                <!-- Dropdown Menu -->
+                <Transition name="sipb-fade">
+                    <div
+                        v-if="profileDropdownOpen"
+                        class="absolute left-4 right-4 top-full z-50 mt-1 rounded-md bg-white py-1 shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-[#e6e9ed]"
+                    >
+                        <Link
+                            href="/admin/profile"
+                            class="flex items-center gap-3 px-4 py-3 text-[13px] font-semibold text-[#1a2134] transition-colors hover:bg-[#f6f7fa] hover:text-[#2737c9]"
+                            @click="profileDropdownOpen = false"
+                        >
+                            <User class="h-4 w-4 text-[#747a8b]" />
+                            Profil Saya
+                        </Link>
+
+                        <div class="px-3 py-2">
+                            <Link
+                                v-if="page.props.auth?.user"
+                                href="/admin/logout"
+                                method="post"
+                                as="button"
+                                class="flex w-full items-center justify-center rounded-md bg-[#f6f7fa] py-2.5 text-sm font-bold text-[#d93c3c] transition-colors hover:bg-[#fce8e8]"
+                            >
+                                Logout
+                            </Link>
+                        </div>
+                    </div>
+                </Transition>
             </div>
 
             <!-- Nav Items -->
@@ -372,20 +388,6 @@ onBeforeUnmount(() => {
                     </span>
                 </Link>
             </nav>
-
-            <!-- Logout -->
-            <div class="shrink-0 border-t border-[#eef0f5] px-4 py-4">
-                <Link
-                    v-if="page.props.auth.user"
-                    href="/admin/logout"
-                    method="post"
-                    as="button"
-                    class="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#e6e9ed] bg-white text-sm font-semibold text-[#747a8b] transition-colors hover:border-[#d93c3c] hover:text-[#d93c3c]"
-                >
-                    <LogOut class="h-4 w-4" />
-                    Keluar
-                </Link>
-            </div>
         </aside>
 
         <aside
@@ -440,7 +442,7 @@ onBeforeUnmount(() => {
                     >
                 </Link>
                 <Link
-                    v-if="page.props.auth.user"
+                    v-if="page.props.auth?.user"
                     href="/admin"
                     :class="[
                         'flex h-10 items-center rounded-md transition-colors text-[#747a8b] hover:bg-[#f6f7fa] hover:text-[#2737c9]',
@@ -476,7 +478,7 @@ onBeforeUnmount(() => {
                             >
                                 <img
                                     :src="campusLogo"
-                                    alt=""
+                                    alt="Logo SIPB"
                                     class="h-8 w-8 object-contain"
                                 />
                             </span>
@@ -512,7 +514,7 @@ onBeforeUnmount(() => {
                             }}</span>
                         </Link>
                         <Link
-                            v-if="page.props.auth.user"
+                            v-if="page.props.auth?.user"
                             href="/admin"
                             class="flex h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold text-[#747a8b] hover:bg-[#f6f7fa] hover:text-[#2737c9]"
                         >
@@ -537,7 +539,11 @@ onBeforeUnmount(() => {
                     <div
                         class="flex items-center justify-between gap-3 px-5 pb-4 pt-5"
                     >
-                        <div class="flex min-w-0 items-center gap-3">
+                        <Link
+                            href="/admin/profile"
+                            class="flex min-w-0 flex-1 items-center gap-3"
+                            @click="adminSidebarOpen = false"
+                        >
                             <img
                                 :src="defaultProfileFoto"
                                 alt="Profile"
@@ -547,17 +553,17 @@ onBeforeUnmount(() => {
                                 <p
                                     class="truncate text-sm font-extrabold text-[#1a2134]"
                                 >
-                                    {{ page.props.auth.user?.name || "Admin" }}
+                                    {{ page.props.auth?.user?.name || "Admin" }}
                                 </p>
                                 <p class="text-xs font-medium text-[#747a8b]">
                                     {{
-                                        page.props.auth.user?.is_super_admin
+                                        page.props.auth?.user?.is_super_admin
                                             ? "Super Admin"
                                             : "Admin"
                                     }}
                                 </p>
                             </div>
-                        </div>
+                        </Link>
                         <button
                             type="button"
                             class="sipb-icon-button"

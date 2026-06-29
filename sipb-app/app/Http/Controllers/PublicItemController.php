@@ -31,8 +31,9 @@ class PublicItemController extends Controller
 
     public function index(Request $request): Response
     {
-        $filters = $request->only(['q', 'category', 'location', 'date', 'sort']);
+        $filters = $request->only(['q', 'category', 'location', 'date', 'sort', 'per_page']);
         $sort = $filters['sort'] ?? 'newest';
+        $perPage = min((int) ($filters['per_page'] ?? 9), 50);
 
         $items = FoundItem::query()
             ->visibleToPublic()
@@ -53,7 +54,7 @@ class PublicItemController extends Controller
             ->when($sort === 'category', fn ($query) => $query->orderBy('category')->latest('published_at'))
             ->when($sort === 'location', fn ($query) => $query->orderBy('location')->latest('published_at'))
             ->when(! in_array($sort, ['oldest', 'name', 'category', 'location'], true), fn ($query) => $query->latest('published_at'))
-            ->paginate(9)
+            ->paginate($perPage)
             ->withQueryString()
             ->through(fn (FoundItem $item) => $this->payloadService->public($item));
 

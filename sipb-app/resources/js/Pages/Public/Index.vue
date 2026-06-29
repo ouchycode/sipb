@@ -8,7 +8,8 @@ import {
     Search,
     ShieldCheck,
     Sparkles,
-    UserRound,
+    Package,
+    Bot,
 } from "@lucide/vue";
 import AppLayout from "../../Shared/AppLayout.vue";
 
@@ -79,7 +80,7 @@ defineProps({
                 </span>
                 <span>&middot;</span>
                 <span class="inline-flex items-center gap-2">
-                    <UserRound class="h-4 w-4 text-[#7957d5]" />
+                    <Package class="h-4 w-4 text-[#7957d5]" />
                     <strong class="text-[#1a2134]">{{ stats.active }}</strong>
                     barang aktif
                 </span>
@@ -90,7 +91,7 @@ defineProps({
             <div class="mx-auto grid max-w-6xl gap-10 px-4 lg:grid-cols-[minmax(0,1fr)_380px]">
                 <div>
                     <p class="text-xs font-extrabold uppercase tracking-[0.28em] text-[#2737c9]">
-                        Alat Siap Pakai
+                        Transparan & Mudah
                     </p>
                     <h2 class="mt-4 max-w-xl text-3xl font-extrabold leading-tight text-[#1a2134]">
                         Dibuat agar proses pengembalian barang terasa jelas,
@@ -98,9 +99,8 @@ defineProps({
                     </h2>
                 </div>
                 <p class="text-sm font-medium leading-7 text-[#64748b]">
-                    SIPB membantu mahasiswa menemukan barang yang sudah masuk
-                    ke admin. Laporan barang temuan dibuat melalui QR yang
-                    diberikan petugas di lokasi layanan.
+                    SIPB membantu sivitas akademika Universitas Yatsi Madani menemukan barang yang tertinggal atau hilang. 
+                    Pencatatan dan publikasi barang temuan dikelola terpusat oleh petugas layanan agar informasi terjamin akurat.
                 </p>
             </div>
 
@@ -154,8 +154,8 @@ defineProps({
                         </div>
                         <h3 class="font-extrabold text-[#1a2134]">Status Terkini</h3>
                         <p class="mt-3 text-sm font-medium leading-6 text-[#64748b]">
-                            Admin bisa mengubah status dari pending sampai
-                            selesai.
+                            Pantau status laporan barang, dari dilaporkan
+                            hingga selesai.
                         </p>
                     </article>
                     <article class="sipb-panel p-5">
@@ -168,6 +168,26 @@ defineProps({
                             kepemilikan.
                         </p>
                     </article>
+                </div>
+            </div>
+            
+            <div class="mx-auto mt-6 max-w-6xl px-4">
+                <div class="overflow-hidden rounded-2xl bg-gradient-to-br from-[#2737c9] to-[#151f77] p-8 md:p-10 text-white shadow-xl relative border border-indigo-500/30">
+                    <div class="relative z-10 grid gap-8 md:grid-cols-[1fr_auto] items-center">
+                        <div>
+                            <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-bold text-white backdrop-blur-sm">
+                                <Sparkles class="h-4 w-4 text-[#5ac8ee]" />
+                                Fitur Baru
+                            </div>
+                            <h2 class="text-3xl font-extrabold">Tanya Asisten AI</h2>
+                            <p class="mt-4 max-w-2xl text-sm font-medium leading-7 text-indigo-100">
+                                Kehilangan barang dan hanya punya fotonya? Sekarang lebih mudah! Unggah foto barang Anda ke widget obrolan di pojok kanan bawah, dan biarkan Asisten AI cerdas kami mencocokkannya dengan database barang temuan dalam hitungan detik.
+                            </p>
+                        </div>
+                        <div class="hidden md:flex h-32 w-32 items-center justify-center rounded-full bg-white/10 backdrop-blur-md shadow-inner">
+                            <Bot class="h-16 w-16 text-white" />
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -189,10 +209,9 @@ defineProps({
                             <Search class="h-4 w-4" />
                         </span>
                     </div>
-                    <h3 class="text-lg font-extrabold text-[#1a2134]">Datang ke Admin</h3>
+                    <h3 class="text-lg font-extrabold text-[#1a2134]">Serahkan ke Admin</h3>
                     <p class="mt-3 text-sm font-medium leading-6 text-[#64748b]">
-                        Penemu barang datang ke petugas dan mengisi laporan
-                        lewat QR yang diberikan admin.
+                        Penemu barang menyerahkan barang temuan ke pusat informasi atau petugas layanan terdekat.
                     </p>
                 </article>
                 <article class="sipb-panel p-6 text-left">
@@ -202,10 +221,9 @@ defineProps({
                             <Sparkles class="h-4 w-4" />
                         </span>
                     </div>
-                    <h3 class="text-lg font-extrabold text-[#1a2134]">Admin Publikasi</h3>
+                    <h3 class="text-lg font-extrabold text-[#1a2134]">Pencatatan & Publikasi</h3>
                     <p class="mt-3 text-sm font-medium leading-6 text-[#64748b]">
-                        Admin memeriksa laporan dan menampilkan barang yang
-                        siap dicari mahasiswa.
+                        Petugas mencatat detail barang ke dalam sistem SIPB dan mempublikasikannya secara online.
                     </p>
                 </article>
                 <article class="sipb-panel p-6 text-left">
@@ -215,10 +233,9 @@ defineProps({
                             <CheckCircle2 class="h-4 w-4" />
                         </span>
                     </div>
-                    <h3 class="text-lg font-extrabold text-[#1a2134]">Ambil Barang</h3>
+                    <h3 class="text-lg font-extrabold text-[#1a2134]">Klaim Barang</h3>
                     <p class="mt-3 text-sm font-medium leading-6 text-[#64748b]">
-                        Pemilik datang ke petugas dan melakukan validasi
-                        sebelum barang diserahkan.
+                        Pemilik mencari barangnya di sistem SIPB, lalu mendatangi petugas untuk validasi dan pengambilan.
                     </p>
                 </article>
             </div>
@@ -247,7 +264,7 @@ defineProps({
         <footer class="py-9 text-center">
             <div class="flex items-center justify-center gap-2">
                 <span class="grid h-7 w-7 place-items-center rounded-md bg-[#edf2ff]">
-                    <img :src="campusLogo" alt="" class="h-6 w-6 object-contain" />
+                    <img :src="campusLogo" alt="Logo UYM" class="h-6 w-6 object-contain" />
                 </span>
                 <span class="font-extrabold text-[#1a2134]">SIPB UYM</span>
             </div>

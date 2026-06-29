@@ -13,13 +13,14 @@ import {
     UsersRound,
     X,
 } from "@lucide/vue";
-import { computed, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import ActiveFilters from "../../Shared/ActiveFilters.vue";
 import AppLayout from "../../Shared/AppLayout.vue";
 import FilterDrawer from "../../Shared/FilterDrawer.vue";
 import Pagination from "../../Shared/Pagination.vue";
 import SearchToolbar from "../../Shared/SearchToolbar.vue";
 import { formatDate } from "../../Shared/status";
+import Swal from "sweetalert2";
 
 const props = defineProps({
     users: Object,
@@ -27,6 +28,10 @@ const props = defineProps({
     roles: Array,
     stats: Object,
 });
+
+const pageLoading = ref(false);
+let removePageStartListener = null;
+let removePageFinishListener = null;
 
 const userRows = computed(() => props.users.data ?? props.users);
 const filters = reactive({
@@ -42,8 +47,23 @@ const showCreateForm = ref(false);
 const showAdvancedFilters = ref(false);
 const editingUser = ref(null);
 
+onMounted(() => {
+    removePageStartListener = router.on("start", (visit) => {
+        pageLoading.value = true;
+    });
+    removePageFinishListener = router.on("finish", () => {
+        pageLoading.value = false;
+    });
+});
+
+onBeforeUnmount(() => {
+    removePageStartListener?.();
+    removePageFinishListener?.();
+});
+
 const createForm = useForm({
     name: "",
+    username: "",
     email: "",
     role: "admin",
     password: "",
@@ -51,6 +71,7 @@ const createForm = useForm({
 
 const editForm = useForm({
     name: "",
+    username: "",
     email: "",
     role: "admin",
     password: "",
@@ -94,6 +115,23 @@ function closeCreateForm() {
 }
 
 function submitCreate() {
+    createForm.clearErrors();
+
+    let hasError = false;
+    if (!createForm.name) {
+        createForm.setError("name", "Nama wajib diisi.");
+        hasError = true;
+    }
+    if (!createForm.email) {
+        createForm.setError("email", "Email wajib diisi.");
+        hasError = true;
+    }
+    if (!createForm.password || createForm.password.length < 8) {
+        createForm.setError("password", "Password minimal 8 karakter.");
+        hasError = true;
+    }
+    if (hasError) return;
+
     createForm.post("/admin/users", {
         preserveScroll: true,
         onSuccess: closeCreateForm,
@@ -104,6 +142,7 @@ function openEditForm(user) {
     editingUser.value = user;
     editForm.defaults({
         name: user.name,
+        username: user.username ?? "",
         email: user.email,
         role: user.role,
         password: "",
@@ -119,6 +158,19 @@ function closeEditForm() {
 }
 
 function submitEdit() {
+    editForm.clearErrors();
+
+    let hasError = false;
+    if (!editForm.name) {
+        editForm.setError("name", "Nama wajib diisi.");
+        hasError = true;
+    }
+    if (!editForm.email) {
+        editForm.setError("email", "Email wajib diisi.");
+        hasError = true;
+    }
+    if (hasError) return;
+
     editForm.patch(`/admin/users/${editingUser.value.id}`, {
         preserveScroll: true,
         onSuccess: closeEditForm,
@@ -126,12 +178,21 @@ function submitEdit() {
 }
 
 function deleteUser(user) {
-    if (!window.confirm(`Hapus akun ${user.name}?`)) {
-        return;
-    }
-
-    router.delete(`/admin/users/${user.id}`, {
-        preserveScroll: true,
+    Swal.fire({
+        title: "Hapus Akun?",
+        text: `Apakah Anda yakin ingin menghapus akun "${user.name}"? Data yang dihapus tidak dapat dikembalikan.`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d93c3c",
+        cancelButtonColor: "#747a8b",
+        confirmButtonText: "Ya, hapus!",
+        cancelButtonText: "Batal",
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(`/admin/users/${user.id}`, {
+                preserveScroll: true,
+            });
+        }
     });
 }
 </script>
@@ -241,8 +302,24 @@ function deleteUser(user) {
 
         <section class="overflow-hidden">
             <div class="grid gap-3 p-4 md:hidden">
+                <template v-if="pageLoading">
+                    <article v-for="index in skeletonRows" :key="`user-mobile-skeleton-${index}`" class="rounded-md sipb-panel p-4">
+                        <div class="flex items-start gap-3">
+                            <span class="sipb-skeleton h-10 w-10 shrink-0 rounded-md"></span>
+                            <div class="min-w-0 flex-1 space-y-2">
+                                <span class="sipb-skeleton h-4 w-3/4"></span>
+                                <span class="sipb-skeleton h-3 w-1/2"></span>
+                                <span class="sipb-skeleton h-5 w-20 rounded-md"></span>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex justify-end gap-2">
+                            <span class="sipb-skeleton h-9 w-20 rounded-md"></span>
+                            <span class="sipb-skeleton h-9 w-9 rounded-md"></span>
+                        </div>
+                    </article>
+                </template>
                 <div
-                    v-if="userRows.length === 0"
+                    v-else-if="userRows.length === 0"
                     class="rounded-md bg-[#f6f7fa] p-5 text-center text-sm font-medium text-[#747a8b]"
                 >
                     Belum ada akun sesuai filter.
@@ -250,12 +327,12 @@ function deleteUser(user) {
                 <article
                     v-for="user in userRows"
                     :key="`user-card-${user.id}`"
-                    class="rounded-md bg-white p-4 shadow-[0_8px_22px_rgba(220,221,234,0.28)]"
+                    class="rounded-md sipb-panel p-4"
                 >
                     <div class="flex items-start gap-3">
                         <img
                             :src="'/assets/profile_foto.png'"
-                            alt="Profile"
+                            :alt="'Foto profil ' + user.name"
                             class="h-10 w-10 shrink-0 rounded-md object-cover bg-white ring-1 ring-[#e2e8f0]"
                         />
                         <div class="min-w-0 flex-1">
@@ -266,6 +343,12 @@ function deleteUser(user) {
                                 class="mt-1 truncate text-sm font-semibold text-[#747a8b]"
                             >
                                 {{ user.email }}
+                            </p>
+                            <p
+                                v-if="user.username"
+                                class="truncate text-xs font-medium text-[#747a8b]"
+                            >
+                                @{{ user.username }}
                             </p>
                             <span
                                 class="mt-2 inline-flex rounded-md border border-[#dfe7ff] bg-[#edf2ff] px-2.5 py-1 text-xs font-bold text-[#2737c9]"
@@ -323,8 +406,26 @@ function deleteUser(user) {
                         </tr>
                     </thead>
                     <tbody>
+                        <template v-if="pageLoading">
+                            <tr v-for="index in skeletonRows" :key="`user-skeleton-${index}`" class="align-middle">
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><span class="sipb-skeleton h-4 w-8"></span></td>
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
+                                    <div class="flex items-center gap-3">
+                                        <span class="sipb-skeleton h-10 w-10 shrink-0 rounded-md"></span>
+                                        <div class="min-w-0 flex-1 space-y-2">
+                                            <span class="sipb-skeleton h-4 w-32"></span>
+                                            <span class="sipb-skeleton h-3 w-44"></span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><span class="sipb-skeleton h-6 w-16"></span></td>
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><span class="sipb-skeleton h-4 w-24"></span></td>
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><span class="sipb-skeleton h-4 w-24"></span></td>
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><div class="flex justify-end gap-2"><span class="sipb-skeleton h-8 w-8"></span><span class="sipb-skeleton h-8 w-8"></span></div></td>
+                            </tr>
+                        </template>
                         <tr
-                            v-if="userRows.length === 0"
+                            v-else-if="userRows.length === 0"
                             class="border-b border-[#f1f5f9] bg-white"
                         >
                             <td
@@ -351,7 +452,7 @@ function deleteUser(user) {
                                 <div class="flex min-w-0 items-center gap-3">
                                     <img
                                         :src="'/assets/profile_foto.png'"
-                                        alt="Profile"
+                                        :alt="'Foto profil ' + user.name"
                                         :class="[isDenseTable ? 'h-8 w-8' : 'h-10 w-10', 'shrink-0 rounded-md object-cover bg-white ring-1 ring-[#e2e8f0]']"
                                     />
                                     <div class="min-w-0">
@@ -370,6 +471,12 @@ function deleteUser(user) {
                                         >
                                             <Mail class="h-3.5 w-3.5" />
                                             {{ user.email }}
+                                        </p>
+                                        <p
+                                            v-if="user.username"
+                                            class="mt-0.5 text-xs font-medium text-[#747a8b]"
+                                        >
+                                            @{{ user.username }}
                                         </p>
                                     </div>
                                 </div>
@@ -462,6 +569,17 @@ function deleteUser(user) {
                         />
                         <p v-if="createForm.errors.name" class="sipb-error">
                             {{ createForm.errors.name }}
+                        </p>
+                    </label>
+                    <label class="block">
+                        <span class="sipb-label">Username</span>
+                        <input
+                            v-model="createForm.username"
+                            class="sipb-input"
+                            placeholder="Opsional, untuk login alternatif"
+                        />
+                        <p v-if="createForm.errors.username" class="sipb-error">
+                            {{ createForm.errors.username }}
                         </p>
                     </label>
                     <label class="block">
@@ -559,6 +677,17 @@ function deleteUser(user) {
                         <input v-model="editForm.name" class="sipb-input" />
                         <p v-if="editForm.errors.name" class="sipb-error">
                             {{ editForm.errors.name }}
+                        </p>
+                    </label>
+                    <label class="block">
+                        <span class="sipb-label">Username</span>
+                        <input
+                            v-model="editForm.username"
+                            class="sipb-input"
+                            placeholder="Opsional, untuk login alternatif"
+                        />
+                        <p v-if="editForm.errors.username" class="sipb-error">
+                            {{ editForm.errors.username }}
                         </p>
                     </label>
                     <label class="block">

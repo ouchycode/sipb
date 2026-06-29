@@ -7,7 +7,7 @@ const campusLogo = "/assets/logo-uym.png";
 const showPassword = ref(false);
 
 const form = useForm({
-    email: '',
+    login: '',
     password: '',
 });
 
@@ -17,6 +17,18 @@ function submit() {
     }
 
     form.clearErrors();
+
+    let hasError = false;
+    if (!form.login) {
+        form.setError('login', 'Email/Username wajib diisi.');
+        hasError = true;
+    }
+    if (!form.password) {
+        form.setError('password', 'Password wajib diisi.');
+        hasError = true;
+    }
+    if (hasError) return;
+
     form.post('/login');
 }
 </script>
@@ -37,15 +49,15 @@ function submit() {
 
                 <form @submit.prevent="submit" class="space-y-4">
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-600">Email</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-600">Email / Username</label>
                         <input
-                            v-model="form.email"
-                            type="email"
+                            v-model="form.login"
+                            type="text"
                             class="w-full rounded-md border border-gray-200 px-3 py-2 text-sm placeholder-gray-300 focus:border-[#2737c9] focus:outline-none focus:ring-1 focus:ring-[#2737c9]"
-                            placeholder="Email"
+                            placeholder="Email atau Username"
                             autocomplete="username"
                         />
-                        <p v-if="form.errors.email" class="mt-1 text-xs text-red-500">{{ form.errors.email }}</p>
+                        <p v-if="form.errors.login" class="mt-1 text-xs text-red-500">{{ form.errors.login }}</p>
                     </div>
 
                     <div>

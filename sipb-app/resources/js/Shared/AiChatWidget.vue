@@ -1,6 +1,6 @@
 <script setup>
-import { router, usePage } from '@inertiajs/vue3';
-import { Bot, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Loader2, MessageCircle, MessagesSquare, Send, Sparkles, X } from '@lucide/vue';
+import { Link, router, usePage } from '@inertiajs/vue3';
+import { Bot, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, ImagePlus, Loader2, MessageCircle, MessagesSquare, Send, Sparkles, X } from '@lucide/vue';
 import { computed, nextTick, ref } from 'vue';
 
 const page = usePage();
@@ -12,6 +12,8 @@ const preChatMessage = ref('');
 const isSending = ref(false);
 const error = ref('');
 const listRef = ref(null);
+const fileInputRef = ref(null);
+const selectedImagePreview = ref('');
 const messages = ref([
     {
         role: 'assistant',
@@ -45,13 +47,32 @@ function submitPreChat() {
     currentView.value = 'chat';
     preChatTopic.value = '';
     preChatMessage.value = '';
-    sendMessage();
 }
 
 function useFAQ(text) {
     input.value = text;
     currentView.value = 'chat';
-    sendMessage();
+}
+
+function onImageSelect(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 4_000_000) {
+        error.value = 'Foto maksimal 4MB.';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        selectedImagePreview.value = reader.result;
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+}
+
+function clearImage() {
+    selectedImagePreview.value = '';
 }
 
 function scrollToBottom() {
@@ -67,11 +88,18 @@ async function sendMessage() {
         return;
     }
 
-    messages.value.push({ role: 'user', content });
+    const imageData = selectedImagePreview.value;
+
+    messages.value.push({
+        role: 'user',
+        content,
+        image: imageData || null,
+    });
     input.value = '';
     error.value = '';
     latestAction.value = null;
     isSending.value = true;
+    selectedImagePreview.value = '';
     await nextTick(scrollToBottom);
 
     try {
@@ -84,6 +112,7 @@ async function sendMessage() {
             },
             body: JSON.stringify({
                 path: page.url,
+                image_data: imageData || null,
                 messages: messages.value
                     .filter((message) => ['user', 'assistant'].includes(message.role))
                     .slice(-10),
@@ -99,6 +128,7 @@ async function sendMessage() {
         messages.value.push({
             role: 'assistant',
             content: data.reply || 'Saya siap membantu layanan SIPB UYM.',
+            items: data.items || [],
         });
         latestAction.value = data.action || null;
     } catch (exception) {
@@ -106,6 +136,7 @@ async function sendMessage() {
         messages.value.push({
             role: 'assistant',
             content: 'Maaf, AI sedang belum stabil. Kamu tetap bisa buka Cari Barang atau Bantuan.',
+            items: [],
         });
         latestAction.value = {
             type: 'help',
@@ -125,6 +156,20 @@ function openAction(action) {
 
     isOpen.value = false;
     router.visit(action.url);
+}
+
+function onPhotoError(event) {
+    event.target.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="80" viewBox="0 0 160 80"><rect fill="#eef0f5" width="160" height="80"/><text x="80" y="44" text-anchor="middle" fill="#9da3b1" font-size="12" font-family="sans-serif">Gambar</text></svg>');
+}
+function formatMessage(content) {
+    if (!content) return '';
+    return content
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 }
 </script>
 
@@ -218,6 +263,7 @@ function openAction(action) {
                                         <option value="" disabled>Pilih Topik</option>
                                         <option value="Lapor Barang Hilang">Lapor Barang Hilang</option>
                                         <option value="Tanya Prosedur">Tanya Prosedur</option>
+                                        <option value="Cari Barang">Cari Barang</option>
                                         <option value="Lainnya">Lainnya</option>
                                     </select>
                                     <ChevronDown class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#747a8b]" />
@@ -283,7 +329,28 @@ function openAction(action) {
                                         : 'rounded-bl-sm bg-white text-[#1a2134] shadow-[0_8px_22px_rgba(220,221,234,0.18)]',
                                 ]"
                             >
-                                {{ message.content }}
+                                <img
+                                    v-if="message.image"
+                                    :src="message.image"
+                                    class="mb-1.5 h-28 w-full rounded-md object-cover"
+                                />
+                                <span class="whitespace-pre-wrap" v-html="formatMessage(message.content)"></span>
+                                <div v-if="message.items?.length" class="mt-2 grid grid-cols-2 gap-2">
+                                    <Link
+                                        v-for="item in message.items"
+                                        :key="item.id"
+                                        :href="`/barang/${item.id}`"
+                                        class="overflow-hidden rounded-md border bg-white"
+                                    >
+                                        <img
+                                            :src="item.photo_url"
+                                            :alt="item.name"
+                                            class="h-20 w-full object-cover"
+                                            @error="onPhotoError"
+                                        />
+                                        <p class="truncate px-2 py-1 text-xs font-bold">{{ item.name }}</p>
+                                    </Link>
+                                </div>
                             </div>
                         </div>
 
@@ -310,7 +377,32 @@ function openAction(action) {
                             {{ error }}
                         </p>
 
+                        <div v-if="selectedImagePreview" class="relative mb-2 inline-block">
+                            <img :src="selectedImagePreview" class="h-14 w-14 rounded-md border object-cover" />
+                            <button
+                                type="button"
+                                class="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-[#d93c3c] text-xs font-bold text-white shadow"
+                                title="Hapus foto"
+                                @click="clearImage"
+                            >×</button>
+                        </div>
+
                         <form class="flex gap-2" @submit.prevent="sendMessage">
+                            <input
+                                ref="fileInputRef"
+                                type="file"
+                                accept="image/*"
+                                hidden
+                                @change="onImageSelect"
+                            />
+                            <button
+                                type="button"
+                                class="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-[#e6e9ed] text-[#747a8b] hover:bg-[#f6f7fa]"
+                                title="Upload foto"
+                                @click="fileInputRef?.click()"
+                            >
+                                <ImagePlus class="h-4 w-4" />
+                            </button>
                             <input
                                 v-model="input"
                                 class="min-h-10 flex-1 rounded-md border border-[#e6e9ed] px-3 text-sm font-medium text-[#1a2134] outline-none placeholder:text-[#9da3b1] focus:border-[#2737c9] focus:ring-2 focus:ring-[#2737c9]/10"

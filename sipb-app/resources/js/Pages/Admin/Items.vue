@@ -7,6 +7,7 @@ import {
     CalendarDays,
     CheckCircle2,
     CheckSquare,
+    ChevronDown,
     ClipboardCheck,
     Clock,
     Download,
@@ -60,13 +61,104 @@ const statusAction = ref("");
 const selectedIds = ref([]);
 const photoName = ref("");
 const photoPreview = ref("");
-const photoInput = ref(null);
 const editPhotoName = ref("");
 const editPhotoPreview = ref("");
 const editPhotoInput = ref(null);
+const editUploadedPhotoId = ref(null);
+const editPhotoDropdownOpen = ref(false);
+const editPhotoDropdownButton = ref(null);
+const editSelectedPhoto = computed(() =>
+    uploadedPhotos.value.find((p) => p.id === editUploadedPhotoId.value) ?? null,
+);
+const uploadedPhotos = ref([]);
+const selectedUploadedPhotoId = ref(null);
+const photoDropdownOpen = ref(false);
+const photoDropdownButton = ref(null);
+const selectedPhoto = computed(() =>
+    uploadedPhotos.value.find((p) => p.id === selectedUploadedPhotoId.value) ?? null,
+);
 const fallbackImage = "/assets/logo-uym.png";
 const maxPhotoSize = 4 * 1024 * 1024;
 const compressionThreshold = 1.5 * 1024 * 1024;
+
+async function fetchUploadedPhotos() {
+    try {
+        const res = await fetch("/admin/uploaded-photos?unused=1");
+        if (res.ok) {
+            uploadedPhotos.value = await res.json();
+        }
+    } catch {
+        // silently fail
+    }
+}
+
+function selectUploadedPhoto(photo) {
+    selectedUploadedPhotoId.value = selectedUploadedPhotoId.value === photo.id ? null : photo.id;
+    form.uploaded_photo_id = selectedUploadedPhotoId.value;
+    if (selectedUploadedPhotoId.value) {
+        form.photo = null;
+        photoPreview.value = photo.photo_data;
+        photoName.value = "Dari galeri upload";
+    } else {
+        photoPreview.value = "";
+        photoName.value = "";
+    }
+    form.clearErrors("photo");
+    photoDropdownOpen.value = false;
+}
+
+function toggleDropdown() {
+    photoDropdownOpen.value = !photoDropdownOpen.value;
+    if (photoDropdownOpen.value) fetchUploadedPhotos();
+}
+
+function handlePhotoDropdownClickOutside(event) {
+    if (
+        photoDropdownOpen.value &&
+        photoDropdownButton.value &&
+        !photoDropdownButton.value.contains(event.target)
+    ) {
+        photoDropdownOpen.value = false;
+    }
+    if (
+        editPhotoDropdownOpen.value &&
+        editPhotoDropdownButton.value &&
+        !editPhotoDropdownButton.value.contains(event.target)
+    ) {
+        editPhotoDropdownOpen.value = false;
+    }
+}
+
+function selectEditUploadedPhoto(photo) {
+    editUploadedPhotoId.value = editUploadedPhotoId.value === photo.id ? null : photo.id;
+    editForm.uploaded_photo_id = editUploadedPhotoId.value;
+    if (editUploadedPhotoId.value) {
+        editForm.photo = null;
+        editPhotoPreview.value = photo.photo_data;
+        editPhotoName.value = "Dari galeri upload";
+    } else {
+        editPhotoPreview.value = "";
+        editPhotoName.value = "";
+    }
+    editForm.clearErrors("photo");
+    editPhotoDropdownOpen.value = false;
+}
+
+function toggleEditDropdown() {
+    editPhotoDropdownOpen.value = !editPhotoDropdownOpen.value;
+    if (editPhotoDropdownOpen.value) fetchUploadedPhotos();
+}
+
+function openUploadPhotosPage() {
+    window.open("/admin/foto", "_blank");
+    window.addEventListener(
+        "focus",
+        () => {
+            fetchUploadedPhotos();
+        },
+        { once: true },
+    );
+}
 
 const form = useForm({
     name: "",
@@ -75,11 +167,12 @@ const form = useForm({
     location: props.locations[0] ?? "",
     found_at: "",
     photo: null,
+    uploaded_photo_id: null,
     finder_name: "",
     finder_nim: "",
-    storage_location: "",
+    storage_location: "Resepsionis",
     admin_notes: "",
-    status: "draft",
+    status: "tersedia",
 });
 
 const itemRows = computed(() => props.items.data ?? props.items);
@@ -104,12 +197,7 @@ const activeFilters = computed(() =>
     ].filter(Boolean),
 );
 const overview = computed(() => ({
-    pending: itemRows.value.filter((item) => item.status === "draft").length,
-    available: itemRows.value.filter((item) => item.status === "tersedia")
-        .length,
-    expired: itemRows.value.filter(
-        (item) => item.status === "kadaluarsa" || item.is_expired,
-    ).length,
+    available: itemRows.value.filter((item) => item.status === "tersedia").length,
 }));
 
 const editForm = useForm({
@@ -119,9 +207,10 @@ const editForm = useForm({
     location: "",
     found_at: "",
     photo: null,
+    uploaded_photo_id: null,
     finder_name: "",
     finder_nim: "",
-    storage_location: "",
+    storage_location: "Resepsionis",
     admin_notes: "",
 });
 
@@ -139,7 +228,7 @@ const statusForm = useForm({
 
 const bulkForm = useForm({
     ids: [],
-    action: "draft",
+    action: "tersedia",
 });
 const pageLoading = ref(false);
 let removePageStartListener = null;
@@ -148,13 +237,6 @@ let removePageFinishListener = null;
 const statusCopy = computed(
     () =>
         ({
-            draft: {
-                title: "Kembalikan ke pending",
-                description:
-                    "Barang tidak tampil di halaman cari sampai dipublish lagi.",
-                button: "Simpan sebagai pending",
-                icon: RotateCcw,
-            },
             tersedia: {
                 title: "Publish laporan",
                 description:
@@ -191,6 +273,7 @@ function toDateTimeLocal(value) {
 
 function closeCreateForm() {
     removePhoto();
+    selectedUploadedPhotoId.value = null;
     showCreateForm.value = false;
 }
 
@@ -221,15 +304,9 @@ function timelineSteps(item) {
                 Boolean(item.published_at) ||
                 ["tersedia", "sudah_diambil"].includes(item.status),
         },
-        {
-            title: "Sudah diambil",
-            caption: "Barang sudah dikembalikan ke pemilik.",
-            time: item.claimed_at ?? firstAuditAt(item, "sudah_diambil"),
-            active: item.status === "sudah_diambil",
-        },
     ];
 
-    if (item.status === "kadaluarsa" || item.is_expired) {
+    if (item.is_expired) {
         steps.push({
             title: "Kadaluarsa",
             caption: "Barang melewati masa tampil publik.",
@@ -282,6 +359,7 @@ function openEditForm(item) {
     });
     editForm.reset();
     editForm.clearErrors();
+    editUploadedPhotoId.value = null;
     removeEditPhoto();
 }
 
@@ -336,13 +414,26 @@ function submit() {
         return;
     }
 
-    if (!form.photo) {
-        form.setError(
-            "photo",
-            "Foto barang wajib diunggah untuk input manual.",
-        );
-        return;
+    form.clearErrors();
+
+    let hasError = false;
+    if (!form.name) {
+        form.setError("name", "Nama barang wajib diisi.");
+        hasError = true;
     }
+    if (!form.description) {
+        form.setError("description", "Deskripsi wajib diisi.");
+        hasError = true;
+    }
+    if (!form.found_at) {
+        form.setError("found_at", "Tanggal/jam wajib diisi.");
+        hasError = true;
+    }
+    if (!form.uploaded_photo_id) {
+        form.setError("photo", "Pilih foto dari upload terbaru.");
+        hasError = true;
+    }
+    if (hasError) return;
 
     form.post("/admin/barang", {
         preserveScroll: true,
@@ -352,6 +443,7 @@ function submit() {
                 "description",
                 "found_at",
                 "photo",
+                "uploaded_photo_id",
                 "finder_name",
                 "finder_nim",
                 "storage_location",
@@ -369,6 +461,23 @@ function submitEdit() {
         return;
     }
 
+    editForm.clearErrors();
+
+    let hasError = false;
+    if (!editForm.name) {
+        editForm.setError('name', 'Nama barang wajib diisi.');
+        hasError = true;
+    }
+    if (!editForm.description) {
+        editForm.setError('description', 'Deskripsi wajib diisi.');
+        hasError = true;
+    }
+    if (!editForm.found_at) {
+        editForm.setError('found_at', 'Tanggal/jam wajib diisi.');
+        hasError = true;
+    }
+    if (hasError) return;
+
     editForm.post(`/admin/barang/${editingItem.value.id}`, {
         preserveScroll: true,
         onSuccess: () => {
@@ -376,36 +485,6 @@ function submitEdit() {
             closeItemDetail();
         },
     });
-}
-
-async function selectPhoto(event) {
-    const file = event.target.files?.[0] ?? null;
-    form.clearErrors("photo", "photo_url");
-
-    if (file && !file.type.startsWith("image/")) {
-        removePhoto();
-        form.setError("photo", "File harus berupa gambar.");
-        return;
-    }
-
-    if (file && file.size > maxPhotoSize) {
-        removePhoto();
-        form.setError("photo", "Ukuran foto maksimal 4 MB.");
-        return;
-    }
-
-    if (photoPreview.value) {
-        URL.revokeObjectURL(photoPreview.value);
-    }
-
-    const finalFile =
-        file && file.size > compressionThreshold
-            ? await compressImage(file).catch(() => file)
-            : file;
-
-    form.photo = finalFile;
-    photoName.value = finalFile?.name ?? "";
-    photoPreview.value = finalFile ? URL.createObjectURL(finalFile) : "";
 }
 
 function compressImage(file) {
@@ -468,13 +547,11 @@ function removePhoto() {
 
     previewImage.value = null;
     form.photo = null;
+    form.uploaded_photo_id = null;
+    selectedUploadedPhotoId.value = null;
     photoName.value = "";
     photoPreview.value = "";
-    form.clearErrors("photo", "photo_url");
-
-    if (photoInput.value) {
-        photoInput.value.value = "";
-    }
+    form.clearErrors("photo");
 }
 
 async function selectEditPhoto(event) {
@@ -514,6 +591,8 @@ function removeEditPhoto() {
 
     previewImage.value = null;
     editForm.photo = null;
+    editForm.uploaded_photo_id = null;
+    editUploadedPhotoId.value = null;
     editPhotoName.value = "";
     editPhotoPreview.value = "";
     editForm.clearErrors("photo");
@@ -587,17 +666,21 @@ function useFallbackImage(event) {
 }
 
 onMounted(() => {
-    removePageStartListener = router.on("start", () => {
+    fetchUploadedPhotos();
+    removePageStartListener = router.on("start", (visit) => {
         pageLoading.value = true;
     });
     removePageFinishListener = router.on("finish", () => {
         pageLoading.value = false;
+        fetchUploadedPhotos();
     });
+    document.addEventListener("click", handlePhotoDropdownClickOutside);
 });
 
 onBeforeUnmount(() => {
     removePageStartListener?.();
     removePageFinishListener?.();
+    document.removeEventListener("click", handlePhotoDropdownClickOutside);
 
     if (photoPreview.value) {
         URL.revokeObjectURL(photoPreview.value);
@@ -629,12 +712,6 @@ onBeforeUnmount(() => {
                 >Tersedia
                 <strong class="text-[#1a2134]">{{
                     overview.available
-                }}</strong></span
-            >
-            <span class="font-semibold text-[#747a8b]"
-                >Kadaluarsa otomatis
-                <strong class="text-[#1a2134]">{{
-                    overview.expired
                 }}</strong></span
             >
         </section>
@@ -680,10 +757,8 @@ onBeforeUnmount(() => {
                     v-model="filters.status"
                     class="w-full rounded-md border border-[#e2e8f0] px-3 py-2.5 text-sm focus:border-[#2737c9] focus:outline-none focus:ring-1 focus:ring-[#2737c9]"
                 >
-                    <option value="">Semua</option>
-                    <option value="draft">Pending</option>
-                    <option value="tersedia">Tersedia</option>
-                    <option value="kadaluarsa">Kadaluarsa</option>
+                    <option value="">Semua Status</option>
+                    <option value="tersedia">Tersedia / Dipublish</option>
                 </select>
             </label>
             <label class="block">
@@ -807,11 +882,11 @@ onBeforeUnmount(() => {
                     <div class="block">
                         <span class="sipb-label flex items-center gap-2">
                             <Image class="h-4 w-4 text-[#747a8b]" />
-                            Foto barang *
+                            Pilih foto *
                         </span>
                         <div
                             v-if="photoPreview"
-                            class="overflow-hidden rounded-md bg-[#f8fafc]"
+                            class="mb-3 overflow-hidden rounded-md bg-[#f8fafc]"
                         >
                             <button
                                 type="button"
@@ -848,50 +923,92 @@ onBeforeUnmount(() => {
                                 </button>
                             </div>
                         </div>
-                        <label
-                            v-else
-                            class="flex min-h-[96px] cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-[#cbd5e1] bg-[#f8fafc] px-4 py-4 text-center transition-colors hover:border-[#2737c9] hover:bg-[#edf2ff]"
-                        >
-                            <Image class="h-6 w-6 text-[#2737c9]" />
-                            <span class="mt-2 text-sm font-bold text-[#1a2134]">
-                                {{ photoName || "Pilih foto barang" }}
-                            </span>
-                            <span
-                                class="mt-1 text-xs font-medium text-[#64748b]"
-                            >
-                                JPG, PNG, atau WEBP. Maksimal 4 MB.
-                            </span>
-                            <input
-                                ref="photoInput"
-                                type="file"
-                                accept="image/*"
-                                class="sr-only"
-                                @change="selectPhoto"
-                            />
-                        </label>
                         <p v-if="form.errors.photo" class="sipb-error">
                             {{ form.errors.photo }}
                         </p>
-                        <p v-if="form.errors.photo_url" class="sipb-error">
-                            {{ form.errors.photo_url }}
-                        </p>
-                        <div v-if="form.progress" class="mt-3">
-                            <div
-                                class="h-2 overflow-hidden rounded-md bg-[#e6e9ed]"
+                        <div ref="photoDropdownButton" class="relative">
+                            <button
+                                type="button"
+                                class="flex w-full items-center gap-3 rounded-md border border-[#e2e8f0] bg-white px-3 py-2.5 text-sm transition-colors hover:border-[#2737c9]"
+                                @click="toggleDropdown"
                             >
+                                <template v-if="selectedPhoto">
+                                    <img
+                                        :src="selectedPhoto.photo_data"
+                                        class="h-10 w-10 shrink-0 rounded object-cover"
+                                    />
+                                    <span class="flex-1 text-left font-semibold text-[#1a2134]">
+                                        {{ new Date(selectedPhoto.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) }}
+                                    </span>
+                                </template>
+                                <template v-else>
+                                    <Image class="h-5 w-5 shrink-0 text-[#747a8b]" />
+                                    <span class="flex-1 text-left text-[#64748b]">Pilih dari galeri</span>
+                                </template>
+                                <ChevronDown
+                                    class="h-4 w-4 shrink-0 text-[#747a8b] transition-transform"
+                                    :class="{ 'rotate-180': photoDropdownOpen }"
+                                />
+                            </button>
+
+                            <Transition name="sipb-fade">
                                 <div
-                                    class="h-full rounded-md bg-[#2737c9] transition-all"
-                                    :style="{
-                                        width: `${form.progress.percentage}%`,
-                                    }"
-                                ></div>
-                            </div>
-                            <p
-                                class="mt-1 text-xs font-semibold text-[#64748b]"
-                            >
-                                Mengunggah foto {{ form.progress.percentage }}%
-                            </p>
+                                    v-if="photoDropdownOpen"
+                                    class="absolute left-0 right-0 z-10 mt-1 rounded-lg bg-white sipb-panel p-3"
+                                >
+                                    <div
+                                        class="grid grid-cols-4 gap-2"
+                                        :class="uploadedPhotos.length > 12 ? 'max-h-60 overflow-y-auto' : ''"
+                                    >
+                                        <button
+                                            v-for="photo in uploadedPhotos"
+                                            :key="photo.id"
+                                            type="button"
+                                            :class="[
+                                                'relative aspect-square overflow-hidden rounded-lg border-2 transition-all',
+                                                selectedUploadedPhotoId === photo.id
+                                                    ? 'border-[#2737c9] ring-2 ring-[#2737c9]/30'
+                                                    : 'border-transparent hover:border-[#cbd5e1]',
+                                            ]"
+                                            @click="selectUploadedPhoto(photo)"
+                                        >
+                                            <img
+                                                :src="photo.photo_data"
+                                                alt=""
+                                                class="h-full w-full object-cover"
+                                            />
+                                            <span
+                                                v-if="selectedUploadedPhotoId === photo.id"
+                                                class="absolute inset-0 grid place-items-center bg-[#2737c9]/20"
+                                            >
+                                                <CheckCircle2 class="h-5 w-5 text-white drop-shadow" />
+                                            </span>
+                                        </button>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[#cbd5e1] py-2 text-sm font-semibold text-[#64748b] transition-colors hover:border-[#2737c9] hover:text-[#2737c9]"
+                                        @click="openUploadPhotosPage"
+                                    >
+                                        <PlusCircle class="h-4 w-4" />
+                                        Upload foto baru
+                                    </button>
+                                </div>
+                            </Transition>
                         </div>
+                        <p
+                            v-if="uploadedPhotos.length === 0"
+                            class="mt-2 text-xs font-medium text-[#64748b]"
+                        >
+                            Belum ada upload.
+                            <button
+                                type="button"
+                                class="font-bold text-[#2737c9] underline hover:text-[#202da8]"
+                                @click="openUploadPhotosPage"
+                            >
+                                Upload foto baru
+                            </button>
+                        </p>
                     </div>
                     <label class="block">
                         <span class="sipb-label">Nama/NIM penemu</span>
@@ -913,6 +1030,7 @@ onBeforeUnmount(() => {
                         <input
                             v-model="form.storage_location"
                             class="sipb-input"
+                            placeholder="Contoh: Resepsionis, Loker 3"
                         />
                     </label>
                     <label class="block lg:col-span-2">
@@ -959,9 +1077,9 @@ onBeforeUnmount(() => {
             <div class="grid gap-3 p-4 md:hidden">
                 <template v-if="pageLoading">
                     <article
-                        v-for="index in 4"
-                        :key="`card-skeleton-${index}`"
-                        class="rounded-md bg-white p-4 shadow-[0_8px_22px_rgba(220,221,234,0.28)]"
+                        v-for="index in skeletonRows"
+                        :key="`item-card-skeleton-${index}`"
+                        class="rounded-md sipb-panel p-4"
                     >
                         <span class="sipb-skeleton mb-3 h-3 w-36"></span>
                         <div class="flex gap-3">
@@ -990,7 +1108,7 @@ onBeforeUnmount(() => {
                     <article
                         v-for="item in itemRows"
                         :key="`card-${item.id}`"
-                        class="rounded-md bg-white p-4 shadow-[0_8px_22px_rgba(220,221,234,0.28)]"
+                        class="rounded-md sipb-panel p-4"
                     >
                         <div class="flex gap-3">
                             <button
@@ -1554,7 +1672,7 @@ onBeforeUnmount(() => {
                                 >
                                     <button
                                         type="button"
-                                        class="group relative block aspect-[4/3] w-full w-full overflow-hidden text-left"
+                                        class="group relative block aspect-[4/3] w-full overflow-hidden text-left"
                                         title="Lihat foto resolusi penuh"
                                         @click="openImagePreview(selectedItem)"
                                     >
@@ -1662,7 +1780,7 @@ onBeforeUnmount(() => {
                             <div class="min-w-0 flex-1 space-y-5">
                                 <!-- Header & Badges -->
                                 <div
-                                    class="rounded-xl border border-gray-100 bg-white p-6 shadow-sm"
+                                    class="rounded-xl border border-gray-100 bg-white p-5 shadow-sm"
                                 >
                                     <div
                                         class="mb-3 flex flex-wrap items-center gap-2"
@@ -2120,7 +2238,7 @@ onBeforeUnmount(() => {
                         </span>
                         <div
                             v-if="editPhotoPreview"
-                            class="overflow-hidden rounded-md bg-[#f8fafc]"
+                            class="mb-3 overflow-hidden rounded-md bg-[#f8fafc]"
                         >
                             <button
                                 type="button"
@@ -2157,35 +2275,86 @@ onBeforeUnmount(() => {
                                 </button>
                             </div>
                         </div>
-                        <label
-                            v-else
-                            class="flex min-h-[96px] cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-[#cbd5e1] bg-[#f8fafc] px-4 py-4 text-center transition-colors hover:border-[#2737c9] hover:bg-[#edf2ff]"
-                        >
-                            <Image class="h-6 w-6 text-[#2737c9]" />
-                            <span class="mt-2 text-sm font-bold text-[#1a2134]"
-                                >Pilih foto pengganti</span
-                            >
-                            <span
-                                class="mt-1 text-xs font-medium text-[#64748b]"
-                                >Kosongkan jika foto lama tetap dipakai.</span
-                            >
-                            <input
-                                ref="editPhotoInput"
-                                type="file"
-                                accept="image/*"
-                                class="sr-only"
-                                @change="selectEditPhoto"
-                            />
-                        </label>
                         <p v-if="editForm.errors.photo" class="sipb-error">
                             {{ editForm.errors.photo }}
                         </p>
+                        <div ref="editPhotoDropdownButton" class="relative">
+                            <button
+                                type="button"
+                                class="flex w-full items-center gap-3 rounded-md border border-[#e2e8f0] bg-white px-3 py-2.5 text-sm transition-colors hover:border-[#2737c9]"
+                                @click="toggleEditDropdown"
+                            >
+                                <template v-if="editSelectedPhoto">
+                                    <img
+                                        :src="editSelectedPhoto.photo_data"
+                                        class="h-10 w-10 shrink-0 rounded object-cover"
+                                    />
+                                    <span class="flex-1 text-left font-semibold text-[#1a2134]">
+                                        {{ new Date(editSelectedPhoto.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) }}
+                                    </span>
+                                </template>
+                                <template v-else>
+                                    <Image class="h-5 w-5 shrink-0 text-[#747a8b]" />
+                                    <span class="flex-1 text-left text-[#64748b]">Pilih dari galeri</span>
+                                </template>
+                                <ChevronDown
+                                    class="h-4 w-4 shrink-0 text-[#747a8b] transition-transform"
+                                    :class="{ 'rotate-180': editPhotoDropdownOpen }"
+                                />
+                            </button>
+
+                            <Transition name="sipb-fade">
+                                <div
+                                    v-if="editPhotoDropdownOpen"
+                                    class="absolute left-0 right-0 z-10 mt-1 rounded-lg bg-white sipb-panel p-3"
+                                >
+                                    <div
+                                        class="grid grid-cols-4 gap-2"
+                                        :class="uploadedPhotos.length > 12 ? 'max-h-60 overflow-y-auto' : ''"
+                                    >
+                                        <button
+                                            v-for="photo in uploadedPhotos"
+                                            :key="photo.id"
+                                            type="button"
+                                            :class="[
+                                                'relative aspect-square overflow-hidden rounded-lg border-2 transition-all',
+                                                editUploadedPhotoId === photo.id
+                                                    ? 'border-[#2737c9] ring-2 ring-[#2737c9]/30'
+                                                    : 'border-transparent hover:border-[#cbd5e1]',
+                                            ]"
+                                            @click="selectEditUploadedPhoto(photo)"
+                                        >
+                                            <img
+                                                :src="photo.photo_data"
+                                                alt=""
+                                                class="h-full w-full object-cover"
+                                            />
+                                            <span
+                                                v-if="editUploadedPhotoId === photo.id"
+                                                class="absolute inset-0 grid place-items-center bg-[#2737c9]/20"
+                                            >
+                                                <CheckCircle2 class="h-5 w-5 text-white drop-shadow" />
+                                            </span>
+                                        </button>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[#cbd5e1] py-2 text-sm font-semibold text-[#64748b] transition-colors hover:border-[#2737c9] hover:text-[#2737c9]"
+                                        @click="openUploadPhotosPage"
+                                    >
+                                        <PlusCircle class="h-4 w-4" />
+                                        Upload foto baru
+                                    </button>
+                                </div>
+                            </Transition>
+                        </div>
                     </div>
                     <label class="block">
                         <span class="sipb-label">Lokasi penyimpanan</span>
                         <input
                             v-model="editForm.storage_location"
                             class="sipb-input"
+                            placeholder="Contoh: Resepsionis, Loker 3"
                         />
                     </label>
                     <label class="block lg:col-span-2">

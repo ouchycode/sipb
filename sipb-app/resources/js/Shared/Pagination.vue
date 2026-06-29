@@ -21,13 +21,14 @@ function onPerPageChange(event) {
         v-if="meta.total > 0"
         class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
     >
-        <div class="flex items-center gap-3 text-sm text-[#64748b]">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[#64748b]">
             <span>Tampilkan</span>
             <select
                 :value="meta.per_page"
-                class="rounded border border-[#e2e8f0] bg-white px-2 py-1 text-sm font-medium text-[#1a2134] focus:border-[#2737c9] focus:outline-none focus:ring-1 focus:ring-[#2737c9]"
+                class="w-full rounded border border-[#e2e8f0] bg-white px-2 py-1 text-sm font-medium text-[#1a2134] focus:border-[#2737c9] focus:outline-none focus:ring-1 focus:ring-[#2737c9] sm:w-auto"
                 @change="onPerPageChange"
             >
+                <option value="5">5 per halaman</option>
                 <option value="10">10 per halaman</option>
                 <option value="20">20 per halaman</option>
                 <option value="50">50 per halaman</option>
@@ -44,6 +45,7 @@ function onPerPageChange(event) {
                     v-if="link.url"
                     :href="link.url"
                     preserve-scroll
+                    preserve-state
                     :class="[
                         'grid h-8 min-w-[32px] place-items-center rounded border px-2 text-sm font-semibold transition-colors',
                         link.active

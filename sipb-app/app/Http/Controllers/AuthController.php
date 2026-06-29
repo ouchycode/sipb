@@ -19,25 +19,28 @@ class AuthController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
+        $data = $request->validate([
+            'login' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
-        $throttleKey = $this->throttleKey($request, $credentials['email']);
+        $login = $data['login'];
+        $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+
+        $throttleKey = $this->throttleKey($request, $login);
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             return back()
                 ->with('error', $this->lockoutMessage(RateLimiter::availableIn($throttleKey)))
-                ->onlyInput('email');
+                ->onlyInput('login');
         }
 
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+        if (! Auth::attempt([$field => $login, 'password' => $data['password']], $request->boolean('remember'))) {
             RateLimiter::hit($throttleKey, 300);
 
             return back()
-                ->with('error', 'Email atau password admin tidak sesuai.')
-                ->onlyInput('email');
+                ->with('error', 'Email/Username atau password tidak sesuai.')
+                ->onlyInput('login');
         }
 
         RateLimiter::clear($throttleKey);
@@ -56,9 +59,9 @@ class AuthController extends Controller
         return redirect('/')->with('success', 'Sesi admin sudah keluar.');
     }
 
-    private function throttleKey(Request $request, string $email): string
+    private function throttleKey(Request $request, string $login): string
     {
-        return Str::lower($email).'|'.$request->ip();
+        return Str::lower($login).'|'.$request->ip();
     }
 
     private function lockoutMessage(int $seconds): string

@@ -1,18 +1,13 @@
 <script setup>
 import { Link, usePage } from "@inertiajs/vue3";
 import {
-    Bell,
     CalendarDays,
     CheckCircle2,
     ChevronLeft,
     ChevronRight,
     ClipboardList,
-    Clock3,
-    Download,
     HelpCircle,
     PackageOpen,
-    Search,
-    UserRound,
 } from "@lucide/vue";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import AppLayout from "../../Shared/AppLayout.vue";
@@ -38,7 +33,6 @@ const todayLabel = computed(() => new Intl.DateTimeFormat("id-ID", {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
     timeZoneName: "short",
 }).format(currentTime.value));
 
@@ -105,50 +99,7 @@ const statCards = computed(() => [
     },
 ]);
 
-const summaryStats = computed(() => [
-    { label: "Total barang", value: props.stats.total, icon: PackageOpen },
-    { label: "Barang tampil", value: props.stats.available, icon: Search },
-]);
-
 const recentItems = computed(() => (props.latest ?? []).slice(0, 4));
-
-const mobileSummaryStats = computed(() => [
-    {
-        label: "Data barang tercatat",
-        value: props.stats.total,
-        icon: UserRound,
-    },
-    {
-        label: "Tampil di publik",
-        value: props.stats.available,
-        icon: Search,
-    },
-]);
-
-const announcementItems = computed(() => {
-    const reports = (props.latest ?? []).slice(0, 2);
-
-    if (reports.length > 0) {
-        return reports.map((item) => ({
-            title: item.name,
-            caption: `${item.category} - ${item.location}`,
-            href: "/admin/barang",
-        }));
-    }
-
-    return [
-        {
-            title: "Belum ada laporan baru",
-            caption: "Data terbaru akan tampil di sini.",
-            href: "/admin/barang",
-        },
-        {
-            title: "Input manual",
-            caption: "Catat laporan jika ada temuan baru.",
-            href: "/admin/barang",
-        },
-    ];
-});
 
 const chartMaxY = computed(() => {
     const maxData = Math.max(...(props.insights?.categories?.map((c) => c.total) || [0]), 10);
@@ -245,7 +196,7 @@ onBeforeUnmount(() => {
                     {{ todayLabel }}
                 </p>
                 <div class="flex items-center gap-2">
-                    <img :src="civitasLogo" alt="" class="h-12 w-12 object-contain" />
+                    <img :src="civitasLogo" alt="Logo Civitas" class="h-12 w-12 object-contain" />
                 </div>
             </div>
         </header>
@@ -267,7 +218,7 @@ onBeforeUnmount(() => {
                         title="Buka menu"
                         @click="openAdminMenu"
                     >
-                        <img :src="mobileMenuIcon" alt="" class="h-[42px] w-[42px]" />
+                        <img :src="mobileMenuIcon" alt="Buka menu" class="h-[42px] w-[42px]" />
                     </button>
                 </header>
 
@@ -287,13 +238,19 @@ onBeforeUnmount(() => {
                         </div>
                     </Link>
                 </section>
-
-                <section class="sipb-panel mb-4 flex items-center justify-between gap-4 border-l-4 border-[#feae37] px-4 py-3">
-                    <p class="text-sm font-medium text-[#1a2134]">
-                        {{ props.stats.draft ? `${props.stats.draft} laporan perlu dicek sebelum tampil publik.` : "Tidak ada laporan pending. Semua laporan aktif sudah diproses." }}
-                    </p>
-                    <HelpCircle class="h-5 w-5 shrink-0 text-[#1a2134]" />
+                <section class="sipb-panel mb-4 flex items-start gap-4 border-l-4 border-[#2737c9] px-4 py-4">
+                    <div class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[#edf2ff] text-[#2737c9]">
+                        <HelpCircle class="h-5 w-5" />
+                    </div>
+                    <div>
+                        <h3 class="text-[15px] font-extrabold text-[#1a2134]">Panduan Cepat Admin</h3>
+                        <p class="mt-1 text-sm font-medium leading-relaxed text-[#64748b]">
+                            Pastikan Anda segera mengubah status barang menjadi <strong class="text-[#1a2134]">"Selesai"</strong> setelah barang diambil oleh pemiliknya agar data di sistem selalu akurat.
+                        </p>
+                    </div>
                 </section>
+
+
 
                 <section class="sipb-panel mb-4 p-4 md:p-5">
                     <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -402,29 +359,6 @@ onBeforeUnmount(() => {
             </div>
 
             <aside class="grid gap-5 lg:grid-cols-2 2xl:block 2xl:space-y-5">
-                <section class="sipb-panel p-4 md:p-5">
-                    <div class="mb-5 flex items-center justify-between">
-                        <h2 class="text-lg font-extrabold text-[#1a2134]">Pengumuman</h2>
-                        <Link href="/admin/barang" class="text-sm font-bold text-[#2737c9]">Lihat Semua</Link>
-                    </div>
-                    <div class="space-y-3">
-                        <Link
-                            v-for="item in announcementItems"
-                            :key="item.title"
-                            :href="item.href"
-                            class="flex gap-3 rounded-lg p-2 transition-colors hover:bg-[#f6f7fa]"
-                        >
-                            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#fff3cd] text-[#feae37]">
-                                <Bell class="h-4 w-4" />
-                            </span>
-                            <span class="min-w-0">
-                                <span class="block truncate text-sm font-extrabold text-[#1a2134]">{{ item.title }}</span>
-                                <span class="mt-0.5 block truncate text-xs font-semibold text-[#747a8b]">{{ item.caption }}</span>
-                            </span>
-                        </Link>
-                    </div>
-                </section>
-
                 <section class="sipb-panel p-4 md:p-5">
                     <h2 class="mb-4 text-lg font-extrabold text-[#1a2134]">Kalender</h2>
                     <div class="mb-4 flex items-center justify-between gap-3">

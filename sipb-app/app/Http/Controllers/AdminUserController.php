@@ -46,12 +46,83 @@ class AdminUserController extends Controller
         ]);
     }
 
+    public function profile(Request $request): Response
+    {
+        $user = $request->user();
+        
+        $filters = $request->only(['date', 'action', 'per_page']);
+        if (!$request->has('date')) {
+            $filters['date'] = now()->format('Y-m-d');
+        }
+        $perPage = (int) ($filters['per_page'] ?? 5);
+        $perPage = in_array($perPage, [5, 10, 20], true) ? $perPage : 5;
+        $filters['per_page'] = $perPage;
+
+        $baseQuery = \App\Models\StatusAudit::query()
+            ->where('user_id', $user->id)
+            ->with(['foundItem']);
+
+        $audits = (clone $baseQuery)
+            ->when($filters['action'] ?? null, fn ($query, string $action) => $query->where('action', $action))
+            ->when($filters['date'] ?? null, function ($query, string $date): void {
+                [$start, $end] = str_contains($date, ' - ') ? explode(' - ', $date) : [$date, $date];
+                $query->whereBetween('created_at', [$start.' 00:00:00', $end.' 23:59:59']);
+            })
+            ->latest()
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(fn ($audit) => [
+                'id' => $audit->id,
+                'action' => $audit->action,
+                'action_label' => match ($audit->action) {
+                    'status_changed' => 'Ubah Status',
+                    'published' => 'Publikasi',
+                    'updated' => 'Perbarui Data',
+                    'created' => 'Tambah Barang',
+                    default => str($audit->action)->title(),
+                },
+                'notes' => $audit->notes,
+                'ip_address' => $audit->ip_address,
+                'created_at' => $audit->created_at->format('d/m/Y, H:i').' WIB',
+                'item_name' => $audit->foundItem?->name ?? '-',
+            ]);
+
+        $actions = (clone $baseQuery)
+            ->select('action')
+            ->distinct()
+            ->pluck('action')
+            ->map(fn (string $action) => [
+                'value' => $action,
+                'label' => match ($action) {
+                    'status_changed' => 'Ubah Status',
+                    'published' => 'Publikasi',
+                    'updated' => 'Perbarui Data',
+                    'created' => 'Tambah Barang',
+                    default => str($action)->title(),
+                },
+            ]);
+
+        return Inertia::render('Admin/Profile', [
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'role_label' => $user->roleLabel(),
+                'status' => 'Aktif',
+            ],
+            'audits' => $audits,
+            'filters' => $filters,
+            'actions' => $actions,
+        ]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $this->ensureSuperAdmin($request);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
+            'username' => ['nullable', 'string', 'max:60', 'unique:users,username', 'regex:/^[a-zA-Z0-9._]+$/'],
             'email' => ['required', 'email', 'max:160', 'unique:users,email'],
             'role' => ['required', Rule::in([User::ROLE_ADMIN, User::ROLE_SUPER_ADMIN])],
             'password' => ['required', 'string', 'min:8'],
@@ -68,6 +139,7 @@ class AdminUserController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
+            'username' => ['nullable', 'string', 'max:60', Rule::unique('users', 'username')->ignore($user->id), 'regex:/^[a-zA-Z0-9._]+$/'],
             'email' => ['required', 'email', 'max:160', Rule::unique('users', 'email')->ignore($user->id)],
             'role' => ['required', Rule::in([User::ROLE_ADMIN, User::ROLE_SUPER_ADMIN])],
             'password' => ['nullable', 'string', 'min:8'],
@@ -125,6 +197,7 @@ class AdminUserController extends Controller
         return [
             'id' => $user->id,
             'name' => $user->name,
+            'username' => $user->username,
             'email' => $user->email,
             'role' => $user->role,
             'role_label' => $user->roleLabel(),

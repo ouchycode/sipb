@@ -1,7 +1,7 @@
 <script setup>
 import { Link, router } from "@inertiajs/vue3";
 import { ArrowRight, CalendarDays, Download, Filter, Globe2, ListChecks, Search, X } from "@lucide/vue";
-import { computed, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import ActiveFilters from "../../Shared/ActiveFilters.vue";
 import AppLayout from "../../Shared/AppLayout.vue";
 import FilterDrawer from "../../Shared/FilterDrawer.vue";
@@ -17,7 +17,28 @@ const props = defineProps({
     storageStats: Object,
 });
 
+const pageLoading = ref(false);
+const skeletonRows = computed(() => Math.min(Number(filters.per_page) || 10, 10));
+const isDenseTable = computed(() => Number(filters.per_page) >= 20);
+const isVeryDenseTable = computed(() => Number(filters.per_page) >= 50);
+let removePageStartListener = null;
+let removePageFinishListener = null;
+
 const activeTab = ref('riwayat');
+
+onMounted(() => {
+    removePageStartListener = router.on("start", (visit) => {
+        pageLoading.value = true;
+    });
+    removePageFinishListener = router.on("finish", () => {
+        pageLoading.value = false;
+    });
+});
+
+onBeforeUnmount(() => {
+    removePageStartListener?.();
+    removePageFinishListener?.();
+});
 
 function formatBytes(bytes, decimals = 2) {
     if (!+bytes) return '0 Bytes';
@@ -127,41 +148,87 @@ function resetFilters() {
             </label>
         </FilterDrawer>
 
-        <section class="overflow-hidden">
+        <section>
+            <div class="grid gap-3 p-4 md:hidden">
+                <template v-if="pageLoading">
+                    <div v-for="index in skeletonRows" :key="`card-sk-${index}`" class="rounded-md sipb-panel p-4">
+                        <div class="space-y-2">
+                            <span class="sipb-skeleton h-4 w-3/4"></span>
+                            <span class="sipb-skeleton h-3 w-1/2"></span>
+                            <span class="sipb-skeleton h-6 w-20"></span>
+                            <span class="sipb-skeleton h-3 w-full"></span>
+                        </div>
+                    </div>
+                </template>
+                <div v-else-if="auditRows.length === 0" class="rounded-md bg-[#f6f7fa] p-5 text-center text-sm font-medium text-[#747a8b]">
+                    Belum ada aktivitas tercatat.
+                </div>
+                <template v-else>
+                    <div v-for="(audit, index) in auditRows" :key="`card-${audit.id}`" class="rounded-md sipb-panel p-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <span class="text-xs font-bold text-[#747a8b]">{{ formatDate(audit.created_at) }}</span>
+                            <span class="inline-flex shrink-0 rounded-md bg-[#edf2ff] px-2 py-0.5 text-[11px] font-bold text-[#2737c9]">
+                                {{ audit.action }}
+                            </span>
+                        </div>
+                        <div class="mt-3 space-y-1.5 text-sm">
+                            <p><span class="font-bold text-[#1a2134]">Aktor:</span> <span class="text-[#64748b]">{{ audit.user?.name || 'Sistem / Guest' }}</span></p>
+                            <p><span class="font-bold text-[#1a2134]">Barang:</span> <span class="text-[#64748b]">{{ audit.item?.name || '-' }}</span></p>
+                            <p v-if="audit.from_status || audit.to_status">
+                                <span class="font-bold text-[#1a2134]">Status:</span>
+                                <span class="text-[#64748b]">{{ statusLabel(audit.from_status) }} <ArrowRight class="inline h-3 w-3" /> {{ statusLabel(audit.to_status) }}</span>
+                            </p>
+                            <p v-if="audit.notes"><span class="font-bold text-[#1a2134]">Catatan:</span> <span class="text-[#64748b] italic">{{ audit.notes }}</span></p>
+                            <p><span class="font-bold text-[#1a2134]">IP:</span> <span class="text-[#64748b]">{{ audit.ip_address || '-' }}</span></p>
+                        </div>
+                    </div>
+                </template>
+            </div>
             <div class="hidden overflow-x-auto md:block">
                 <table class="min-w-[1020px] w-full text-sm">
                     <thead class="border-b border-[#e2e8f0] text-left">
                         <tr>
-                            <th class="px-4 py-3 font-bold text-[#1a2134]">No</th>
-                            <th class="px-4 py-3 font-bold text-[#1a2134]">Waktu</th>
-                            <th class="px-4 py-3 font-bold text-[#1a2134]">Aktor</th>
-                            <th class="px-4 py-3 font-bold text-[#1a2134]">Aksi</th>
-                            <th class="px-4 py-3 font-bold text-[#1a2134]">Target (Barang)</th>
-                            <th class="px-4 py-3 font-bold text-[#1a2134]">Detail & Catatan</th>
-                            <th class="px-4 py-3 font-bold text-[#1a2134]">IP Address</th>
+                            <th :class="[isDenseTable ? 'px-3 py-2.5' : 'px-4 py-3', 'font-bold text-[#1a2134]']">No</th>
+                            <th :class="[isDenseTable ? 'px-3 py-2.5' : 'px-4 py-3', 'font-bold text-[#1a2134]']">Waktu</th>
+                            <th :class="[isDenseTable ? 'px-3 py-2.5' : 'px-4 py-3', 'font-bold text-[#1a2134]']">Aktor</th>
+                            <th :class="[isDenseTable ? 'px-3 py-2.5' : 'px-4 py-3', 'font-bold text-[#1a2134]']">Aksi</th>
+                            <th :class="[isDenseTable ? 'px-3 py-2.5' : 'px-4 py-3', 'font-bold text-[#1a2134]']">Target (Barang)</th>
+                            <th :class="[isDenseTable ? 'px-3 py-2.5' : 'px-4 py-3', 'font-bold text-[#1a2134]']">Detail & Catatan</th>
+                            <th :class="[isDenseTable ? 'px-3 py-2.5' : 'px-4 py-3', 'font-bold text-[#1a2134]']">Lokasi</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-if="auditRows.length === 0" class="border-b border-[#f1f5f9] bg-white">
+                        <template v-if="pageLoading">
+                            <tr v-for="index in skeletonRows" :key="`activity-skeleton-${index}`" class="align-middle">
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><span class="sipb-skeleton h-4 w-8"></span></td>
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><span class="sipb-skeleton h-4 w-32"></span></td>
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><span class="sipb-skeleton h-4 w-28"></span></td>
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><span class="sipb-skeleton h-6 w-20"></span></td>
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><span class="sipb-skeleton h-4 w-36"></span></td>
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><span class="sipb-skeleton h-4 w-24"></span></td>
+                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><span class="sipb-skeleton h-4 w-20"></span></td>
+                            </tr>
+                        </template>
+                        <tr v-else-if="auditRows.length === 0" class="border-b border-[#f1f5f9] bg-white">
                             <td colspan="7" class="px-4 py-8 text-center text-[#747a8b]">
                                 Belum ada aktivitas tercatat.
                             </td>
                         </tr>
                         <tr v-else v-for="(audit, index) in auditRows" :key="audit.id" class="border-b border-[#f1f5f9] align-middle odd:bg-white even:bg-[#f8f9fd] hover:bg-[#f1f5f9]">
-                            <td class="px-4 py-3 text-[#1a2134]">{{ (props.audits.current_page - 1) * props.audits.per_page + index + 1 }}</td>
-                            <td class="px-4 py-3 text-[#747a8b]">{{ formatDate(audit.created_at) }}</td>
-                            <td class="px-4 py-3">
+                            <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3', 'text-[#1a2134]']">{{ (props.audits.current_page - 1) * props.audits.per_page + index + 1 }}</td>
+                            <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3', 'text-[#747a8b]']">{{ formatDate(audit.created_at) }}</td>
+                            <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
                                 <span class="font-bold text-[#1a2134]">{{ audit.user?.name || 'Sistem / Guest' }}</span>
                             </td>
-                            <td class="px-4 py-3">
-                                <span class="inline-flex rounded-md bg-[#edf2ff] px-2.5 py-1 text-xs font-bold text-[#2737c9]">
+                            <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
+                                <span :class="['inline-flex rounded-md bg-[#edf2ff] text-xs font-bold text-[#2737c9]', isDenseTable ? 'px-2 py-0.5' : 'px-2.5 py-1']">
                                     {{ audit.action }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3">
+                            <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
                                 <span class="font-bold text-[#1a2134]">{{ audit.item?.name || '-' }}</span>
                             </td>
-                            <td class="px-4 py-3">
+                            <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
                                 <div class="text-[#64748b]">
                                     <span v-if="audit.from_status || audit.to_status">
                                         {{ statusLabel(audit.from_status) }}
@@ -172,7 +239,7 @@ function resetFilters() {
                                     <p v-if="audit.notes" class="mt-1 text-xs text-[#747a8b] italic">{{ audit.notes }}</p>
                                 </div>
                             </td>
-                            <td class="px-4 py-3 text-[#747a8b]">
+                            <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3', 'text-[#747a8b]']">
                                 {{ audit.ip_address || '-' }}
                             </td>
                         </tr>

@@ -12,6 +12,12 @@
         @inertiaHead
     </head>
     <body class="antialiased">
+        <div id="sipb-loading" class="sipb-loading-screen">
+            <div class="sipb-loading-box">
+                <img src="/assets/civitas-logo-128.png" alt="Loading..." />
+                <div class="sipb-progress-bar"><span></span></div>
+            </div>
+        </div>
         @inertia
     </body>
 </html>

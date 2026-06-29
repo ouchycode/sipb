@@ -15,12 +15,20 @@ class FoundItemLifecycleService
                 'updated_at' => now(),
             ]);
 
+        FoundItem::query()
+            ->where('status', 'kadaluarsa')
+            ->update([
+                'status' => 'sudah_diambil',
+                'expired_at' => now(),
+                'updated_at' => now(),
+            ]);
+
         $expired = FoundItem::query()
             ->where('status', 'tersedia')
             ->whereNotNull('published_at')
             ->where('published_at', '<', now()->subDays(30))
             ->update([
-                'status' => 'kadaluarsa',
+                'status' => 'sudah_diambil',
                 'expired_at' => now(),
                 'updated_at' => now(),
             ]);

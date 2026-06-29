@@ -25,6 +25,7 @@ const fallbackImage = "/assets/logo-uym.png";
 const itemRows = computed(() => props.items.data ?? props.items);
 const itemTotal = computed(() => props.items.total ?? itemRows.value.length);
 const pageLoading = ref(false);
+const skeletonRows = computed(() => Math.min(Number(form.per_page) || 9, 9));
 const showMobileFilters = ref(false);
 let removePageStartListener = null;
 let removePageFinishListener = null;
@@ -35,6 +36,7 @@ const form = reactive({
     location: props.filters.location ?? "",
     date: props.filters.date ?? "",
     sort: props.filters.sort ?? "newest",
+    per_page: props.filters.per_page ?? 9,
 });
 
 const sortOptions = [
@@ -68,6 +70,7 @@ function clearFilters() {
     form.location = "";
     form.date = "";
     form.sort = "newest";
+    form.per_page = 9;
     applyFilters();
 }
 
@@ -92,7 +95,7 @@ function submitAndCloseFilters() {
 }
 
 onMounted(() => {
-    removePageStartListener = router.on("start", () => {
+    removePageStartListener = router.on("start", (visit) => {
         pageLoading.value = true;
     });
     removePageFinishListener = router.on("finish", () => {
@@ -243,9 +246,10 @@ onBeforeUnmount(() => {
                     <div
                         v-if="pageLoading"
                         class="relative grid min-w-0 gap-6 md:grid-cols-2 2xl:grid-cols-3"
+                        style="animation: sipb-fade-in .2s ease both"
                     >
                         <article
-                            v-for="index in 6"
+                            v-for="index in skeletonRows"
                             :key="`public-search-skeleton-${index}`"
                             class="min-w-0 overflow-hidden rounded-md bg-white shadow-[-10px_12px_24px_rgba(203,213,225,0.18),10px_12px_24px_rgba(203,213,225,0.18),0_1px_4px_rgba(148,163,184,0.2)]"
                         >
@@ -292,9 +296,10 @@ onBeforeUnmount(() => {
                         appear
                     >
                         <Link
-                            v-for="item in itemRows"
+                            v-for="(item, index) in itemRows"
                             :key="item.id"
                             :href="itemHref(item)"
+                            :style="{ '--delay': `${index * 0.04}s` }"
                             class="min-w-0 overflow-hidden rounded-md bg-white shadow-[-10px_12px_24px_rgba(203,213,225,0.18),10px_12px_24px_rgba(203,213,225,0.18),0_1px_4px_rgba(148,163,184,0.2)]"
                         >
                             <div class="group h-[176px] bg-[#e2e8f0]">
@@ -353,7 +358,15 @@ onBeforeUnmount(() => {
                         </Link>
                     </TransitionGroup>
 
-                    <Pagination :meta="items" />
+                    <Pagination
+                        :meta="items"
+                        @update:perPage="
+                            (val) => {
+                                form.per_page = val;
+                                applyFilters();
+                            }
+                        "
+                    />
                 </div>
             </div>
         </form>

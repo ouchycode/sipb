@@ -1,5 +1,5 @@
 <script setup>
-import { Link } from "@inertiajs/vue3";
+import { Link, Head } from "@inertiajs/vue3";
 import {
     ArrowLeft,
     ClipboardCheck,
@@ -37,6 +37,13 @@ const faqs = [
 </script>
 
 <template>
+    <Head>
+        <title>Bantuan - SIPB UYM</title>
+        <meta head-key="description" name="description" content="Panduan lengkap cara mencari barang temuan dan mengklaim barang di SIPB Universitas Yatsi Madani." />
+        <meta head-key="og:title" property="og:title" content="Bantuan SIPB UYM" />
+        <meta head-key="og:description" property="og:description" content="Panduan lengkap cara mencari barang temuan dan mengklaim barang di SIPB Universitas Yatsi Madani." />
+        <meta head-key="og:image" property="og:image" content="/assets/logo-uym.png" />
+    </Head>
     <AppLayout title="Bantuan SIPB UYM" :show-page-header="false" :show-public-sidebar="false">
         <section class="mx-auto max-w-5xl">
             <Link href="/" class="mb-5 inline-flex items-center gap-2 text-sm font-bold text-[#747a8b] hover:text-[#2737c9]">
