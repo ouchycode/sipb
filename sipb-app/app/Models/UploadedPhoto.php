@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class UploadedPhoto extends Model
 {
@@ -13,5 +14,14 @@ class UploadedPhoto extends Model
         return [
             'used_at' => 'datetime',
         ];
+    }
+
+    public function getPhotoUrlAttribute(): ?string
+    {
+        if ($this->photo_path) {
+            return Storage::url($this->photo_path);
+        }
+
+        return $this->photo_data;
     }
 }

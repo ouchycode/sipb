@@ -37,7 +37,6 @@ class AdminItemController extends Controller
         $this->lifecycleService->syncExpiredItems();
 
         $latest = FoundItem::query()
-            ->whereNotIn('status', [FoundItem::STATUS_REVISION, FoundItem::STATUS_REJECTED])
             ->latest()
             ->limit(6)
             ->get()

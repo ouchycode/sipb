@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
     'name',
@@ -37,14 +38,9 @@ class FoundItem extends Model
 {
     public const STATUS_AVAILABLE = 'tersedia';
     public const STATUS_CLAIMED = 'sudah_diambil';
-    public const STATUS_REVISION = 'perlu_revisi';
-    public const STATUS_REJECTED = 'ditolak';
+    public const STATUS_EXPIRED = 'kadaluarsa';
 
     public const EXPIRATION_DAYS = 30;
-
-    private const TRACKING_PREFIX = 'SIPB-UYM';
-    private const TRACKING_MULTIPLIER = 7919;
-    private const TRACKING_SALT = 104729;
 
     protected function casts(): array
     {
@@ -56,6 +52,15 @@ class FoundItem extends Model
             'expired_at' => 'datetime',
             'pickup_checklist' => 'array',
         ];
+    }
+
+    public function getPhotoUrlAttribute(?string $value): string
+    {
+        if ($this->photo_path) {
+            return Storage::url($this->photo_path);
+        }
+
+        return $this->photo_data ?: (string) $value;
     }
 
     public function manager(): BelongsTo
@@ -86,42 +91,4 @@ class FoundItem extends Model
         return $this->published_at !== null && $this->published_at->lt(now()->subDays(self::EXPIRATION_DAYS));
     }
 
-    public function trackingCode(): string
-    {
-        $encoded = strtoupper(base_convert((string) (($this->id * self::TRACKING_MULTIPLIER) + self::TRACKING_SALT), 10, 36));
-
-        return self::TRACKING_PREFIX.'-'.$encoded.'-'.self::trackingChecksum($encoded, (int) $this->id);
-    }
-
-    public static function idFromTrackingCode(string $code): ?int
-    {
-        $normalized = strtoupper(trim($code));
-
-        if (! preg_match('/^SIPB-UYM-([A-Z0-9]+)-([A-Z0-9]{2})$/', $normalized, $matches)) {
-            return null;
-        }
-
-        $encoded = $matches[1];
-        $number = (int) base_convert($encoded, 36, 10);
-        $decoded = $number - self::TRACKING_SALT;
-
-        if ($decoded <= 0 || $decoded % self::TRACKING_MULTIPLIER !== 0) {
-            return null;
-        }
-
-        $id = intdiv($decoded, self::TRACKING_MULTIPLIER);
-
-        if ($matches[2] !== self::trackingChecksum($encoded, $id)) {
-            return null;
-        }
-
-        return $id;
-    }
-
-    private static function trackingChecksum(string $encoded, int $id): string
-    {
-        $hash = strtoupper(base_convert(sprintf('%u', crc32($encoded.'|'.$id.'|'.self::TRACKING_PREFIX)), 10, 36));
-
-        return str_pad(substr($hash, -2), 2, '0', STR_PAD_LEFT);
-    }
 }

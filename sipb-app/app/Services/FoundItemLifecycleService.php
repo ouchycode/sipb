@@ -8,15 +8,8 @@ class FoundItemLifecycleService
 {
     public function syncExpiredItems(): array
     {
-        $normalized = FoundItem::query()
-            ->where('status', 'dalam_proses_klaim')
-            ->update([
-                'status' => FoundItem::STATUS_AVAILABLE,
-                'updated_at' => now(),
-            ]);
-
         FoundItem::query()
-            ->where('status', 'kadaluarsa')
+            ->where('status', FoundItem::STATUS_EXPIRED)
             ->update([
                 'status' => FoundItem::STATUS_CLAIMED,
                 'expired_at' => now(),
@@ -34,7 +27,6 @@ class FoundItemLifecycleService
             ]);
 
         return [
-            'normalized' => $normalized,
             'expired' => $expired,
         ];
     }

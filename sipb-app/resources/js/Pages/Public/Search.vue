@@ -9,9 +9,10 @@ import {
     UserRound,
     X,
 } from "@lucide/vue";
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { computed, reactive, ref } from "vue";
 import AppLayout from "../../Shared/AppLayout.vue";
 import Pagination from "../../Shared/Pagination.vue";
+import { usePageLoading } from "../../Composables/usePageLoading";
 import { formatDate, statusClass, statusLabel } from "../../Shared/status";
 
 const props = defineProps({
@@ -21,14 +22,12 @@ const props = defineProps({
     locations: Array,
 });
 
+const { pageLoading } = usePageLoading();
 const fallbackImage = "/assets/logo-uym.png";
 const itemRows = computed(() => props.items.data ?? props.items);
 const itemTotal = computed(() => props.items.total ?? itemRows.value.length);
-const pageLoading = ref(false);
 const skeletonRows = computed(() => Math.min(Number(form.per_page) || 9, 9));
 const showMobileFilters = ref(false);
-let removePageStartListener = null;
-let removePageFinishListener = null;
 
 const form = reactive({
     q: props.filters.q ?? "",
@@ -106,19 +105,7 @@ function submitAndCloseFilters() {
     applyFilters();
 }
 
-onMounted(() => {
-    removePageStartListener = router.on("start", (visit) => {
-        pageLoading.value = true;
-    });
-    removePageFinishListener = router.on("finish", () => {
-        pageLoading.value = false;
-    });
-});
 
-onBeforeUnmount(() => {
-    removePageStartListener?.();
-    removePageFinishListener?.();
-});
 </script>
 
 <template>

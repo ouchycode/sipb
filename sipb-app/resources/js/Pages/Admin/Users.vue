@@ -13,12 +13,13 @@ import {
     UsersRound,
     X,
 } from "@lucide/vue";
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { computed, reactive, ref } from "vue";
 import ActiveFilters from "../../Shared/ActiveFilters.vue";
 import AppLayout from "../../Shared/AppLayout.vue";
 import FilterDrawer from "../../Shared/FilterDrawer.vue";
 import Pagination from "../../Shared/Pagination.vue";
 import SearchToolbar from "../../Shared/SearchToolbar.vue";
+import { usePageLoading } from "../../Composables/usePageLoading";
 import { formatDate } from "../../Shared/status";
 import Swal from "sweetalert2";
 
@@ -29,9 +30,7 @@ const props = defineProps({
     stats: Object,
 });
 
-const pageLoading = ref(false);
-let removePageStartListener = null;
-let removePageFinishListener = null;
+const { pageLoading } = usePageLoading();
 
 const userRows = computed(() => props.users.data ?? props.users);
 const filters = reactive({
@@ -49,19 +48,7 @@ const showCreateForm = ref(false);
 const showAdvancedFilters = ref(false);
 const editingUser = ref(null);
 
-onMounted(() => {
-    removePageStartListener = router.on("start", (visit) => {
-        pageLoading.value = true;
-    });
-    removePageFinishListener = router.on("finish", () => {
-        pageLoading.value = false;
-    });
-});
 
-onBeforeUnmount(() => {
-    removePageStartListener?.();
-    removePageFinishListener?.();
-});
 
 const createForm = useForm({
     name: "",

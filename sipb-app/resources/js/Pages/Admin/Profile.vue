@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from "vue";
+import { onBeforeUnmount, ref, watch } from "vue";
 import { Head, router, Link } from "@inertiajs/vue3";
 import AppLayout from "../../Shared/AppLayout.vue";
 import { ChevronLeft, ChevronRight, Calendar } from "@lucide/vue";
@@ -15,35 +15,33 @@ const activeTab = ref("Data Diri");
 
 const search = ref(props.filters.action || "");
 const dateRange = ref(props.filters.date || "");
-
-const debounce = (fn, delay) => {
-    let timeoutId;
-    return (...args) => {
-        if (timeoutId) clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-            fn(...args);
-        }, delay);
-    };
-};
+const debounceTimeoutId = ref(null);
 
 watch(
     [search, dateRange],
-    debounce(([newAction, newDate]) => {
-        router.get(
-            "/admin/profile",
-            {
-                action: newAction,
-                date: newDate,
-                per_page: props.filters.per_page,
-            },
-            {
-                preserveState: true,
-                preserveScroll: true,
-                replace: true,
-            },
-        );
-    }, 300),
+    ([newAction, newDate]) => {
+        if (debounceTimeoutId.value) clearTimeout(debounceTimeoutId.value);
+        debounceTimeoutId.value = setTimeout(() => {
+            router.get(
+                "/admin/profile",
+                {
+                    action: newAction,
+                    date: newDate,
+                    per_page: props.filters.per_page,
+                },
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                    replace: true,
+                },
+            );
+        }, 300);
+    },
 );
+
+onBeforeUnmount(() => {
+    if (debounceTimeoutId.value) clearTimeout(debounceTimeoutId.value);
+});
 
 const resetFilter = () => {
     const today = new Date().toLocaleDateString("en-CA"); // gets YYYY-MM-DD

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\UploadedPhoto;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -29,7 +30,7 @@ class AdminPhotoController extends Controller
         return response()->json(
             $query->latest()->limit(50)->get()->map(fn (UploadedPhoto $p) => [
                 'id' => $p->id,
-                'photo_url' => $p->photo_path ? \Illuminate\Support\Facades\Storage::url($p->photo_path) : $p->photo_data,
+                'photo_url' => $p->photo_url,
                 'created_at' => $p->created_at->toISOString(),
             ])
         );
@@ -44,7 +45,7 @@ class AdminPhotoController extends Controller
             ->get()
             ->map(fn (UploadedPhoto $p) => [
                 'id' => $p->id,
-                'photo_url' => $p->photo_path ? \Illuminate\Support\Facades\Storage::url($p->photo_path) : $p->photo_data,
+                'photo_url' => $p->photo_url,
                 'created_at' => $p->created_at->toISOString(),
                 'used_at' => $p->used_at?->toISOString(),
             ])
@@ -73,7 +74,7 @@ class AdminPhotoController extends Controller
 
         return response()->json([
             'id' => $photo->id,
-            'photo_url' => \Illuminate\Support\Facades\Storage::url($path),
+            'photo_url' => Storage::url($path),
             'created_at' => $photo->created_at->toISOString(),
         ]);
     }

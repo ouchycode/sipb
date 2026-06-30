@@ -10,13 +10,14 @@ import {
     MapPin,
     Search,
 } from "@lucide/vue";
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { computed, reactive, ref } from "vue";
 import ActiveFilters from "../../Shared/ActiveFilters.vue";
 import AppLayout from "../../Shared/AppLayout.vue";
 import FilterDrawer from "../../Shared/FilterDrawer.vue";
 import ImagePreviewModal from "../../Shared/ImagePreviewModal.vue";
 import Pagination from "../../Shared/Pagination.vue";
 import SearchToolbar from "../../Shared/SearchToolbar.vue";
+import { usePageLoading } from "../../Composables/usePageLoading";
 import { formatDate, maskNim, statusClass, statusLabel } from "../../Shared/status";
 
 const props = defineProps({
@@ -43,10 +44,8 @@ const skeletonRows = computed(() =>
 );
 const isDenseTable = computed(() => Number(filters.per_page) >= 20);
 const isVeryDenseTable = computed(() => Number(filters.per_page) >= 50);
-const pageLoading = ref(false);
+const { pageLoading } = usePageLoading();
 const previewImage = ref(null);
-let removePageStartListener = null;
-let removePageFinishListener = null;
 
 function applyFilters() {
     router.get("/admin/history", filters, {
@@ -105,19 +104,7 @@ function itemStatusClass(item) {
         : statusClass("kadaluarsa");
 }
 
-onMounted(() => {
-    removePageStartListener = router.on("start", (visit) => {
-        pageLoading.value = true;
-    });
-    removePageFinishListener = router.on("finish", () => {
-        pageLoading.value = false;
-    });
-});
 
-onBeforeUnmount(() => {
-    removePageStartListener?.();
-    removePageFinishListener?.();
-});
 </script>
 
 <template>

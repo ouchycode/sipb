@@ -1,12 +1,13 @@
 <script setup>
 import { Link, router } from "@inertiajs/vue3";
 import { ArrowRight, CalendarDays, Download, Filter, Globe2, Search, X } from "@lucide/vue";
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { computed, reactive, ref } from "vue";
 import ActiveFilters from "../../Shared/ActiveFilters.vue";
 import AppLayout from "../../Shared/AppLayout.vue";
 import FilterDrawer from "../../Shared/FilterDrawer.vue";
 import Pagination from "../../Shared/Pagination.vue";
 import SearchToolbar from "../../Shared/SearchToolbar.vue";
+import { usePageLoading } from "../../Composables/usePageLoading";
 import { formatDate, statusLabel } from "../../Shared/status";
 
 const props = defineProps({
@@ -17,28 +18,11 @@ const props = defineProps({
     storageStats: Object,
 });
 
-const pageLoading = ref(false);
+const { pageLoading } = usePageLoading();
 const skeletonRows = computed(() => Math.min(Number(filters.per_page) || 10, 10));
 const isDenseTable = computed(() => Number(filters.per_page) >= 20);
 const isVeryDenseTable = computed(() => Number(filters.per_page) >= 50);
-let removePageStartListener = null;
-let removePageFinishListener = null;
-
 const activeTab = ref('riwayat');
-
-onMounted(() => {
-    removePageStartListener = router.on("start", (visit) => {
-        pageLoading.value = true;
-    });
-    removePageFinishListener = router.on("finish", () => {
-        pageLoading.value = false;
-    });
-});
-
-onBeforeUnmount(() => {
-    removePageStartListener?.();
-    removePageFinishListener?.();
-});
 
 function formatBytes(bytes, decimals = 2) {
     if (!+bytes) return '0 Bytes';

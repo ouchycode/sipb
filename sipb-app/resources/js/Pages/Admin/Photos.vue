@@ -1,8 +1,9 @@
 <script setup>
 import { router, usePage } from "@inertiajs/vue3";
 import { Image as ImageIcon, Trash2, Upload, X } from "@lucide/vue";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, ref } from "vue";
 import AppLayout from "../../Shared/AppLayout.vue";
+import { usePageLoading } from "../../Composables/usePageLoading";
 import Swal from "sweetalert2";
 
 const props = defineProps({
@@ -12,10 +13,8 @@ const props = defineProps({
 const page = usePage();
 const photos = ref(props.photos ?? []);
 const uploading = ref(false);
-const pageLoading = ref(!props.photos?.length);
+const { pageLoading } = usePageLoading(!props.photos?.length);
 const uploadInput = ref(null);
-let removePageStartListener = null;
-let removePageFinishListener = null;
 
 const csrfToken = computed(
     () =>
@@ -105,20 +104,7 @@ function hapusFoto(photoId) {
     });
 }
 
-onMounted(() => {
-    pageLoading.value = false;
-    removePageStartListener = router.on("start", (visit) => {
-        pageLoading.value = true;
-    });
-    removePageFinishListener = router.on("finish", () => {
-        pageLoading.value = false;
-    });
-});
 
-onBeforeUnmount(() => {
-    removePageStartListener?.();
-    removePageFinishListener?.();
-});
 </script>
 
 <template>
