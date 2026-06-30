@@ -1,11 +1,14 @@
 <?php
 
-use App\Http\Controllers\AdminItemController;
-use App\Http\Controllers\AdminPhotoController;
-use App\Http\Controllers\AdminUserController;
-use App\Http\Controllers\AiAssistantController;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\PublicItemController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\ActivityController as AdminActivityController;
+use App\Http\Controllers\Admin\ExportController as AdminExportController;
+use App\Http\Controllers\Admin\ItemController as AdminItemController;
+use App\Http\Controllers\Admin\PhotoController as AdminPhotoController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Api\AiAssistantController;
+use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Public\ItemController as PublicItemController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PublicItemController::class, 'home'])->name('public.home');
@@ -14,7 +17,7 @@ Route::get('/bantuan', [PublicItemController::class, 'help'])->name('public.help
 
 Route::get('/barang/{item}', [PublicItemController::class, 'show'])->name('public.show');
 Route::post('/ai/chat', [AiAssistantController::class, 'chat'])->middleware('throttle:20,1')->name('ai.chat');
-Route::get('/swagger', [\App\Http\Controllers\SwaggerController::class, 'index'])->name('swagger');
+Route::get('/swagger', [\App\Http\Controllers\Api\SwaggerController::class, 'index'])->name('swagger');
 
 Route::get('/sitemap.xml', function () {
     $items = \App\Models\FoundItem::where('status', 'tersedia')
@@ -32,11 +35,11 @@ Route::middleware('guest')->group(function (): void {
 });
 
 Route::middleware('auth')->prefix('admin')->name('admin.')->group(function (): void {
-    Route::get('/', [AdminItemController::class, 'dashboard'])->name('dashboard');
-    Route::get('/insights', [AdminItemController::class, 'insights'])->name('insights');
+    Route::get('/', [AdminDashboardController::class, 'dashboard'])->name('dashboard');
+    Route::get('/insights', [AdminDashboardController::class, 'insights'])->name('insights');
     Route::get('/barang', [AdminItemController::class, 'index'])->name('items.index');
-    Route::get('/history', [AdminItemController::class, 'history'])->name('items.history');
-    Route::get('/aktivitas', [AdminItemController::class, 'activity'])->name('activity');
+    Route::get('/history', [AdminActivityController::class, 'history'])->name('items.history');
+    Route::get('/aktivitas', [AdminActivityController::class, 'activity'])->name('activity');
     Route::get('/profile', [AdminUserController::class, 'profile'])->name('profile');
     Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
     Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
@@ -47,8 +50,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function (): v
     Route::delete('/uploaded-photos/{photo}', [AdminPhotoController::class, 'destroy'])->name('photos.destroy');
     Route::get('/uploaded-photos', [AdminPhotoController::class, 'listJson'])->name('photos.list');
 
-    Route::get('/export', [AdminItemController::class, 'export'])->name('items.export');
-    Route::get('/export-excel', [AdminItemController::class, 'exportExcel'])->name('items.export-excel');
+    Route::get('/export', [AdminExportController::class, 'export'])->name('items.export');
+    Route::get('/export-excel', [AdminExportController::class, 'exportExcel'])->name('items.export-excel');
     Route::get('/barang/{item}/tanda-terima', [AdminItemController::class, 'printReceipt'])->name('items.receipt');
     Route::post('/barang', [AdminItemController::class, 'store'])->name('items.store');
     Route::post('/barang/{item}', [AdminItemController::class, 'update'])->name('items.update');

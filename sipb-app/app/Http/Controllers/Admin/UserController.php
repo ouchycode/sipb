@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
 
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -9,7 +11,7 @@ use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class AdminUserController extends Controller
+class UserController extends Controller
 {
     public function index(Request $request): Response
     {

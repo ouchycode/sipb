@@ -1,0 +1,26 @@
+runtime: php82
+env: standard
+
+document_root: public
+
+env_variables:
+  APP_NAME: "SIPB Kampus"
+  APP_ENV: production
+  APP_KEY: "base64:GLYAeQ7PGeCGGfRwlu4OkBnmaq2fq/9+hBAn0SocUYs="
+  APP_DEBUG: false
+  APP_URL: "https://sipb-500808.et.r.appspot.com"
+  
+  # Log disalurkan ke Google Cloud Logging (stderr)
+  LOG_CHANNEL: stderr
+  
+  # Konfigurasi Database - HARUS diupdate setelah Cloud SQL selesai dibuat!
+  DB_CONNECTION: mysql
+  DB_HOST: 127.0.0.1
+  DB_PORT: 3306
+  DB_DATABASE: sipb
+  DB_USERNAME: root
+  DB_PASSWORD: ""
+  
+  SESSION_DRIVER: database
+  CACHE_STORE: database
+  QUEUE_CONNECTION: database

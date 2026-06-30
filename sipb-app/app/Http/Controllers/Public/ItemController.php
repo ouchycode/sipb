@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Public;
+
+use App\Http\Controllers\Controller;
 
 use App\Models\FoundItem;
 use Illuminate\Http\Request;
@@ -9,7 +11,7 @@ use Inertia\Response;
 
 use App\Services\FoundItemPayloadService;
 
-class PublicItemController extends Controller
+class ItemController extends Controller
 {
     protected FoundItemPayloadService $payloadService;
 
