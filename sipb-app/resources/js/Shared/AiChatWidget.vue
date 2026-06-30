@@ -58,7 +58,7 @@ function onImageSelect(event) {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 4_000_000) {
+    if (file.size > 4 * 1024 * 1024) {
         error.value = 'Foto maksimal 4MB.';
         return;
     }

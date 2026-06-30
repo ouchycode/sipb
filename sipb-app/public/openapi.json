@@ -659,43 +659,6 @@
         }
       }
     },
-    "/admin/notifications": {
-      "get": {
-        "tags": ["Admin"],
-        "summary": "API Notifikasi Barang Draft",
-        "description": "Endpoint JSON internal untuk polling notifikasi barang baru berstatus draft (pending approval).",
-        "security": [{ "sessionAuth": [] }],
-        "responses": {
-          "200": {
-            "description": "Objek JSON berisi total barang draft dan daftar 5 laporan draft terbaru",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "pending_reports": { "type": "integer", "example": 3 },
-                    "latest_reports": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": { "type": "integer" },
-                          "name": { "type": "string" },
-                          "category": { "type": "string" },
-                          "location": { "type": "string" },
-                          "status": { "type": "string" },
-                          "created_at": { "type": "string" }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/admin/export": {
       "get": {
         "tags": ["Admin"],

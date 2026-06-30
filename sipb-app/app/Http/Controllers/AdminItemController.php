@@ -39,7 +39,7 @@ class AdminItemController extends Controller
         $this->lifecycleService->syncExpiredItems();
 
         $latest = FoundItem::query()
-            ->whereNotIn('status', ['perlu_revisi', 'ditolak'])
+            ->whereNotIn('status', [FoundItem::STATUS_REVISION, FoundItem::STATUS_REJECTED])
             ->latest()
             ->limit(6)
             ->get()
@@ -48,64 +48,62 @@ class AdminItemController extends Controller
         return Inertia::render('Admin/Dashboard', [
             'stats' => [
                 'total' => FoundItem::count(),
-                'available' => FoundItem::where('status', 'tersedia')->count(),
-                'claimed' => FoundItem::where('status', 'sudah_diambil')->count(),
-                'expired' => FoundItem::where('status', 'sudah_diambil')->whereNull('claimed_at')->count(),
+                'available' => FoundItem::where('status', FoundItem::STATUS_AVAILABLE)->count(),
+                'claimed' => FoundItem::where('status', FoundItem::STATUS_CLAIMED)->count(),
+                'expired' => FoundItem::whereNotNull('expired_at')->count(),
             ],
             'latest' => $latest,
-            'insights' => [
-                'categories' => FoundItem::query()
-                    ->select('category', DB::raw('count(*) as total'))
-                    ->groupBy('category')
-                    ->orderByDesc('total')
-                    ->limit(5)
-                    ->get(),
-                'locations' => FoundItem::query()
-                    ->select('location', DB::raw('count(*) as total'))
-                    ->groupBy('location')
-                    ->orderByDesc('total')
-                    ->limit(5)
-                    ->get(),
-                'months' => FoundItem::query()
-                    ->latest()
-                    ->limit(240)
-                    ->get(['created_at'])
-                    ->groupBy(fn (FoundItem $item) => $item->created_at?->format('Y-m') ?? '-')
-                    ->map(fn ($items, string $month) => ['month' => $month, 'total' => $items->count()])
-                    ->values()
-                    ->take(6),
-            ],
+            'insights' => $this->buildInsights(),
         ]);
     }
 
-
-
-    public function notifications(): JsonResponse
+    public function insights(Request $request): JsonResponse
     {
-        return response()->json([
-            'pending_reports' => FoundItem::where('status', 'draft')->count(),
-            'latest_reports' => FoundItem::query()
-                ->where('status', 'draft')
-                ->latest()
-                ->limit(5)
-                ->get(['id', 'name', 'category', 'location', 'status', 'created_at'])
-                ->map(fn (FoundItem $item) => [
-                    'id' => $item->id,
-                    'name' => $item->name,
-                    'category' => $item->category,
-                    'location' => $item->location,
-                    'status' => $item->status,
-                    'created_at' => $item->created_at?->toISOString(),
-                ]),
-        ]);
+        return response()->json($this->buildInsights($request->integer('period')));
     }
+
+    private function buildInsights(?int $periodDays = null): array
+    {
+        $filteredQuery = fn () => tap(FoundItem::query(), function ($q) use ($periodDays): void {
+            if ($periodDays) {
+                $q->where('created_at', '>=', now()->subDays($periodDays));
+            }
+        });
+
+        $unfilteredQuery = fn () => FoundItem::query();
+
+        return [
+            'categories' => $filteredQuery()
+                ->select('category', DB::raw('count(*) as total'))
+                ->groupBy('category')
+                ->orderByDesc('total')
+                ->limit(5)
+                ->get(),
+            'locations' => $filteredQuery()
+                ->select('location', DB::raw('count(*) as total'))
+                ->groupBy('location')
+                ->orderByDesc('total')
+                ->limit(5)
+                ->get(),
+            'months' => $unfilteredQuery()
+                ->latest()
+                ->limit(240)
+                ->get(['created_at'])
+                ->groupBy(fn (FoundItem $item) => $item->created_at?->format('Y-m') ?? '-')
+                ->map(fn ($items, string $month) => ['month' => $month, 'total' => $items->count()])
+                ->values()
+                ->take(6),
+        ];
+    }
+
+
 
     public function index(Request $request): Response
     {
         $this->lifecycleService->syncExpiredItems();
 
         $filters = $request->only(['q', 'status', 'category', 'location', 'per_page']);
-        $allowedStatuses = ['tersedia'];
+        $allowedStatuses = [FoundItem::STATUS_AVAILABLE];
         $perPage = (int) ($filters['per_page'] ?? 10);
         $perPage = in_array($perPage, [10, 20, 50], true) ? $perPage : 10;
         $filters['per_page'] = $perPage;
@@ -219,7 +217,7 @@ class AdminItemController extends Controller
 
     public function printReceipt(Request $request, FoundItem $item): Response|RedirectResponse
     {
-        if ($item->status !== 'sudah_diambil') {
+        if ($item->status !== FoundItem::STATUS_CLAIMED) {
             return redirect()->back()->with('error', 'Barang belum diambil, tidak bisa mencetak tanda terima.');
         }
 
@@ -241,7 +239,7 @@ class AdminItemController extends Controller
 
         $items = FoundItem::query()
             ->with('manager')
-            ->where('status', 'sudah_diambil')
+            ->where('status', FoundItem::STATUS_CLAIMED)
             ->when($filters['q'] ?? null, function ($query, string $keyword): void {
                 $query->where(function ($nested) use ($keyword): void {
                     $nested
@@ -408,10 +406,10 @@ class AdminItemController extends Controller
         unset($data['uploaded_photo_id']);
 
         $statusData = $request->validate([
-            'status' => ['nullable', 'in:tersedia'],
+            'status' => ['nullable', 'in:' . FoundItem::STATUS_AVAILABLE],
         ]);
 
-        $data['status'] = $statusData['status'] ?? 'tersedia';
+        $data['status'] = $statusData['status'] ?? FoundItem::STATUS_AVAILABLE;
         $data['published_at'] = now();
         $data['managed_by'] = $request->user()->id;
 
@@ -466,7 +464,7 @@ class AdminItemController extends Controller
     public function updateStatus(Request $request, FoundItem $item): RedirectResponse
     {
         $data = $request->validate([
-            'status' => ['required', 'in:tersedia,sudah_diambil'],
+            'status' => ['required', 'in:' . FoundItem::STATUS_AVAILABLE . ',' . FoundItem::STATUS_CLAIMED],
             'claimant_name' => ['required_if:status,sudah_diambil', 'nullable', 'string', 'max:255'],
             'claimant_nim' => ['nullable', 'string', 'max:100'],
             'validation_notes' => ['nullable', 'string', 'max:1000'],
@@ -482,13 +480,13 @@ class AdminItemController extends Controller
         $item->managed_by = $request->user()->id;
         $item->validation_notes = $data['validation_notes'] ?? $item->validation_notes;
 
-        if ($item->status === 'tersedia' && $item->published_at === null) {
+        if ($item->status === FoundItem::STATUS_AVAILABLE && $item->published_at === null) {
             $item->published_at = now();
         }
 
 
 
-        if ($item->status === 'sudah_diambil') {
+        if ($item->status === FoundItem::STATUS_CLAIMED) {
             $checklist = $data['pickup_checklist'] ?? [];
 
             if (! ($checklist['identity_checked'] ?? false) || ! ($checklist['ownership_checked'] ?? false) || ! ($checklist['condition_checked'] ?? false)) {
@@ -501,7 +499,7 @@ class AdminItemController extends Controller
             $item->pickup_checklist = $checklist;
         }
 
-        if ($item->status !== 'sudah_diambil') {
+        if ($item->status !== FoundItem::STATUS_CLAIMED) {
             $item->claimed_at = null;
             $item->claimant_name = null;
             $item->claimant_nim = null;
@@ -539,8 +537,7 @@ class AdminItemController extends Controller
             'location' => ['required', 'string', 'max:120'],
             'found_at' => ['required', 'date'],
             'uploaded_photo_id' => ['required', 'integer', 'exists:uploaded_photos,id'],
-            'finder_name' => ['required', 'string', 'max:120'],
-            'finder_nim' => ['nullable', 'string', 'max:40'],
+            'finder_name' => ['nullable', 'string', 'max:120'],
             'storage_location' => ['nullable', 'string', 'max:120'],
             'admin_notes' => ['nullable', 'string', 'max:1000'],
         ]);
@@ -558,77 +555,9 @@ class AdminItemController extends Controller
             'photo' => ['nullable', 'image', 'max:4096'],
             'uploaded_photo_id' => ['nullable', 'integer', 'exists:uploaded_photos,id'],
             'finder_name' => ['nullable', 'string', 'max:255'],
-            'finder_nim' => ['nullable', 'string', 'max:100'],
             'storage_location' => ['nullable', 'string', 'max:255'],
             'admin_notes' => ['nullable', 'string', 'max:1000'],
         ]);
     }
 
-    private function adminPayload(FoundItem $item): array
-    {
-        return [
-            'id' => $item->id,
-            'name' => $item->name,
-            'category' => $item->category,
-            'description' => $item->description,
-            'location' => $item->location,
-            'found_at' => $item->found_at?->toISOString(),
-            'photo_url' => $item->photo_data ?: $item->photo_url,
-            'status' => $item->status,
-            'published_at' => $item->published_at?->toISOString(),
-            'claimed_at' => $item->claimed_at?->toISOString(),
-            'rejected_at' => $item->rejected_at?->toISOString(),
-            'expired_at' => $item->expired_at?->toISOString(),
-            'finder_name' => $item->finder_name,
-            'finder_nim' => $item->finder_nim,
-            'claimant_name' => $item->claimant_name,
-            'claimant_nim' => $item->claimant_nim,
-            'storage_location' => $item->storage_location,
-            'admin_notes' => $item->admin_notes,
-            'validation_notes' => $item->validation_notes,
-            'pickup_checklist' => $item->pickup_checklist,
-            'manager' => $item->manager?->only('name', 'email'),
-            'is_expired' => $item->is_expired,
-            'duplicate_candidates' => [],
-            'audits' => $item->relationLoaded('audits')
-                ? $item->audits
-                    ->sortByDesc('created_at')
-                    ->values()
-                    ->map(fn (StatusAudit $audit) => [
-                        'id' => $audit->id,
-                        'from_status' => $audit->from_status,
-                        'to_status' => $audit->to_status,
-                        'action' => $audit->action,
-                        'notes' => $audit->notes,
-                        'created_at' => $audit->created_at?->toISOString(),
-                        'user' => $audit->user?->only('name', 'email'),
-                    ])
-                : [],
-        ];
-    }
-
-    private function duplicateCandidates(FoundItem $item): array
-    {
-        $firstWord = Str::of($item->name)->explode(' ')->first();
-
-        return FoundItem::query()
-            ->whereKeyNot($item->id)
-            ->where('category', $item->category)
-            ->where(function ($query) use ($item, $firstWord): void {
-                $query
-                    ->where('location', $item->location)
-                    ->orWhere('name', 'like', '%'.$firstWord.'%');
-            })
-            ->latest()
-            ->limit(3)
-            ->get(['id', 'name', 'location', 'status', 'created_at'])
-            ->map(fn (FoundItem $candidate) => [
-                'id' => $candidate->id,
-                'name' => $candidate->name,
-                'location' => $candidate->location,
-                'status' => $candidate->status,
-                'created_at' => $candidate->created_at?->toISOString(),
-            ])
-            ->all();
-    }
 }

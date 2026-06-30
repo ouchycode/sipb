@@ -39,7 +39,9 @@ const filters = reactive({
     role: props.filters.role ?? "",
     per_page: props.filters.per_page ?? 10,
 });
-const skeletonRows = computed(() => Math.min(Number(filters.per_page) || 10, 10));
+const skeletonRows = computed(() =>
+    Math.min(Number(filters.per_page) || 10, 10),
+);
 const isDenseTable = computed(() => Number(filters.per_page) >= 20);
 const isVeryDenseTable = computed(() => Number(filters.per_page) >= 50);
 
@@ -252,10 +254,7 @@ function deleteUser(user) {
             </article>
         </section>
 
-        <SearchToolbar
-            v-model="filters.q"
-            @search="applyFilters"
-        >
+        <SearchToolbar v-model="filters.q" @search="applyFilters">
             <template #actions>
                 <button
                     type="button"
@@ -283,7 +282,9 @@ function deleteUser(user) {
             @reset="resetFilters"
         >
             <label class="block">
-                <span class="mb-1.5 block text-sm font-bold text-[#1a2134]">Role</span>
+                <span class="mb-1.5 block text-sm font-bold text-[#1a2134]"
+                    >Role</span
+                >
                 <select
                     v-model="filters.role"
                     class="w-full rounded-md border border-[#e2e8f0] px-3 py-2.5 text-sm focus:border-[#2737c9] focus:outline-none focus:ring-1 focus:ring-[#2737c9]"
@@ -303,18 +304,30 @@ function deleteUser(user) {
         <section class="overflow-hidden">
             <div class="grid gap-3 p-4 md:hidden">
                 <template v-if="pageLoading">
-                    <article v-for="index in skeletonRows" :key="`user-mobile-skeleton-${index}`" class="rounded-md sipb-panel p-4">
+                    <article
+                        v-for="index in skeletonRows"
+                        :key="`user-mobile-skeleton-${index}`"
+                        class="rounded-md sipb-panel p-4"
+                    >
                         <div class="flex items-start gap-3">
-                            <span class="sipb-skeleton h-10 w-10 shrink-0 rounded-md"></span>
+                            <span
+                                class="sipb-skeleton h-10 w-10 shrink-0 rounded-md"
+                            ></span>
                             <div class="min-w-0 flex-1 space-y-2">
                                 <span class="sipb-skeleton h-4 w-3/4"></span>
                                 <span class="sipb-skeleton h-3 w-1/2"></span>
-                                <span class="sipb-skeleton h-5 w-20 rounded-md"></span>
+                                <span
+                                    class="sipb-skeleton h-5 w-20 rounded-md"
+                                ></span>
                             </div>
                         </div>
                         <div class="mt-4 flex justify-end gap-2">
-                            <span class="sipb-skeleton h-9 w-20 rounded-md"></span>
-                            <span class="sipb-skeleton h-9 w-9 rounded-md"></span>
+                            <span
+                                class="sipb-skeleton h-9 w-20 rounded-md"
+                            ></span>
+                            <span
+                                class="sipb-skeleton h-9 w-9 rounded-md"
+                            ></span>
                         </div>
                     </article>
                 </template>
@@ -407,21 +420,84 @@ function deleteUser(user) {
                     </thead>
                     <tbody>
                         <template v-if="pageLoading">
-                            <tr v-for="index in skeletonRows" :key="`user-skeleton-${index}`" class="align-middle">
-                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><span class="sipb-skeleton h-4 w-8"></span></td>
-                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
+                            <tr
+                                v-for="index in skeletonRows"
+                                :key="`user-skeleton-${index}`"
+                                class="align-middle"
+                            >
+                                <td
+                                    :class="[
+                                        isDenseTable
+                                            ? 'px-3 py-2'
+                                            : 'px-4 py-3',
+                                    ]"
+                                >
+                                    <span class="sipb-skeleton h-4 w-8"></span>
+                                </td>
+                                <td
+                                    :class="[
+                                        isDenseTable
+                                            ? 'px-3 py-2'
+                                            : 'px-4 py-3',
+                                    ]"
+                                >
                                     <div class="flex items-center gap-3">
-                                        <span class="sipb-skeleton h-10 w-10 shrink-0 rounded-md"></span>
+                                        <span
+                                            class="sipb-skeleton h-10 w-10 shrink-0 rounded-md"
+                                        ></span>
                                         <div class="min-w-0 flex-1 space-y-2">
-                                            <span class="sipb-skeleton h-4 w-32"></span>
-                                            <span class="sipb-skeleton h-3 w-44"></span>
+                                            <span
+                                                class="sipb-skeleton h-4 w-32"
+                                            ></span>
+                                            <span
+                                                class="sipb-skeleton h-3 w-44"
+                                            ></span>
                                         </div>
                                     </div>
                                 </td>
-                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><span class="sipb-skeleton h-6 w-16"></span></td>
-                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><span class="sipb-skeleton h-4 w-24"></span></td>
-                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><span class="sipb-skeleton h-4 w-24"></span></td>
-                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']"><div class="flex justify-end gap-2"><span class="sipb-skeleton h-8 w-8"></span><span class="sipb-skeleton h-8 w-8"></span></div></td>
+                                <td
+                                    :class="[
+                                        isDenseTable
+                                            ? 'px-3 py-2'
+                                            : 'px-4 py-3',
+                                    ]"
+                                >
+                                    <span class="sipb-skeleton h-6 w-16"></span>
+                                </td>
+                                <td
+                                    :class="[
+                                        isDenseTable
+                                            ? 'px-3 py-2'
+                                            : 'px-4 py-3',
+                                    ]"
+                                >
+                                    <span class="sipb-skeleton h-4 w-24"></span>
+                                </td>
+                                <td
+                                    :class="[
+                                        isDenseTable
+                                            ? 'px-3 py-2'
+                                            : 'px-4 py-3',
+                                    ]"
+                                >
+                                    <span class="sipb-skeleton h-4 w-24"></span>
+                                </td>
+                                <td
+                                    :class="[
+                                        isDenseTable
+                                            ? 'px-3 py-2'
+                                            : 'px-4 py-3',
+                                    ]"
+                                >
+                                    <div class="flex justify-end gap-2">
+                                        <span
+                                            class="sipb-skeleton h-8 w-8"
+                                        ></span
+                                        ><span
+                                            class="sipb-skeleton h-8 w-8"
+                                        ></span>
+                                    </div>
+                                </td>
                             </tr>
                         </template>
                         <tr
@@ -440,7 +516,12 @@ function deleteUser(user) {
                             :key="user.id"
                             class="border-b border-[#f1f5f9] align-middle odd:bg-white even:bg-[#f8f9fd] hover:bg-[#f1f5f9]"
                         >
-                            <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3', 'text-[#1a2134]']">
+                            <td
+                                :class="[
+                                    isDenseTable ? 'px-3 py-2' : 'px-4 py-3',
+                                    'text-[#1a2134]',
+                                ]"
+                            >
                                 {{
                                     (props.users.current_page - 1) *
                                         props.users.per_page +
@@ -448,12 +529,21 @@ function deleteUser(user) {
                                     1
                                 }}
                             </td>
-                            <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
+                            <td
+                                :class="[
+                                    isDenseTable ? 'px-3 py-2' : 'px-4 py-3',
+                                ]"
+                            >
                                 <div class="flex min-w-0 items-center gap-3">
                                     <img
                                         :src="'/assets/profile_foto.png'"
                                         :alt="'Foto profil ' + user.name"
-                                        :class="[isDenseTable ? 'h-8 w-8' : 'h-10 w-10', 'shrink-0 rounded-md object-cover bg-white ring-1 ring-[#e2e8f0]']"
+                                        :class="[
+                                            isDenseTable
+                                                ? 'h-8 w-8'
+                                                : 'h-10 w-10',
+                                            'shrink-0 rounded-md object-cover bg-white ring-1 ring-[#e2e8f0]',
+                                        ]"
                                     />
                                     <div class="min-w-0">
                                         <p
@@ -481,24 +571,47 @@ function deleteUser(user) {
                                     </div>
                                 </div>
                             </td>
-                            <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
+                            <td
+                                :class="[
+                                    isDenseTable ? 'px-3 py-2' : 'px-4 py-3',
+                                ]"
+                            >
                                 <span
                                     class="inline-flex rounded-md border border-[#dfe7ff] bg-[#edf2ff] px-2.5 py-1 text-xs font-bold text-[#2737c9]"
                                 >
                                     {{ user.role_label }}
                                 </span>
                             </td>
-                            <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3', 'font-semibold text-[#747a8b]']">
+                            <td
+                                :class="[
+                                    isDenseTable ? 'px-3 py-2' : 'px-4 py-3',
+                                    'font-semibold text-[#747a8b]',
+                                ]"
+                            >
                                 {{ formatDate(user.created_at) }}
                             </td>
-                            <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3', 'font-semibold text-[#747a8b]']">
+                            <td
+                                :class="[
+                                    isDenseTable ? 'px-3 py-2' : 'px-4 py-3',
+                                    'font-semibold text-[#747a8b]',
+                                ]"
+                            >
                                 {{ formatDate(user.updated_at) }}
                             </td>
-                            <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
+                            <td
+                                :class="[
+                                    isDenseTable ? 'px-3 py-2' : 'px-4 py-3',
+                                ]"
+                            >
                                 <div class="flex justify-end gap-2">
                                     <button
                                         type="button"
-                                        :class="['sipb-icon-button', isVeryDenseTable ? '!h-7 !w-7' : '!h-8 !w-8']"
+                                        :class="[
+                                            'sipb-icon-button',
+                                            isVeryDenseTable
+                                                ? '!h-7 !w-7'
+                                                : '!h-8 !w-8',
+                                        ]"
                                         title="Edit akun"
                                         @click="openEditForm(user)"
                                     >
@@ -507,7 +620,12 @@ function deleteUser(user) {
                                     <button
                                         type="button"
                                         :disabled="user.is_current_user"
-                                        :class="['sipb-icon-button text-[#d93c3c] hover:text-[#d93c3c] disabled:opacity-40', isVeryDenseTable ? '!h-7 !w-7' : '!h-8 !w-8']"
+                                        :class="[
+                                            'sipb-icon-button text-[#d93c3c] hover:text-[#d93c3c] disabled:opacity-40',
+                                            isVeryDenseTable
+                                                ? '!h-7 !w-7'
+                                                : '!h-8 !w-8',
+                                        ]"
                                         title="Hapus akun"
                                         @click="deleteUser(user)"
                                     >

@@ -2,7 +2,6 @@
 import { Link, router, usePage } from "@inertiajs/vue3";
 import {
     AlertTriangle,
-    Bell,
     CheckCircle2,
     ChevronRight,
     ChevronDown,
@@ -663,12 +662,6 @@ onBeforeUnmount(() => {
                         alt=""
                         class="h-[42px] w-[42px]"
                     />
-                    <span
-                        v-if="notificationBadge"
-                        class="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#d93c3c] px-1 text-[10px] font-extrabold text-white ring-2 ring-white"
-                    >
-                        {{ notificationBadge }}
-                    </span>
                 </button>
             </div>
 

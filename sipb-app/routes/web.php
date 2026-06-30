@@ -33,6 +33,7 @@ Route::middleware('guest')->group(function (): void {
 
 Route::middleware('auth')->prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/', [AdminItemController::class, 'dashboard'])->name('dashboard');
+    Route::get('/insights', [AdminItemController::class, 'insights'])->name('insights');
     Route::get('/barang', [AdminItemController::class, 'index'])->name('items.index');
     Route::get('/history', [AdminItemController::class, 'history'])->name('items.history');
     Route::get('/aktivitas', [AdminItemController::class, 'activity'])->name('activity');
@@ -41,7 +42,6 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function (): v
     Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
     Route::patch('/users/{user}', [AdminUserController::class, 'update'])->name('users.update');
     Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
-    Route::get('/notifications', [AdminItemController::class, 'notifications'])->name('notifications');
     Route::get('/foto', [AdminPhotoController::class, 'index'])->name('photos.index');
     Route::post('/upload-photo', [AdminPhotoController::class, 'store'])->name('photos.store');
     Route::delete('/uploaded-photos/{photo}', [AdminPhotoController::class, 'destroy'])->name('photos.destroy');

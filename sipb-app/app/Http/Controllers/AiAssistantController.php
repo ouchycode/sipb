@@ -12,6 +12,10 @@ use Throwable;
 
 class AiAssistantController extends Controller
 {
+    private const VISION_MAX_ITEMS = 12;
+    private const TEXT_MAX_ITEMS = 12;
+    private const VISION_SELECT_LIMIT = 3;
+    private const FALLBACK_LIMIT = 4;
     public function chat(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -22,15 +26,15 @@ class AiAssistantController extends Controller
             'image_data' => ['nullable', 'string', 'max:6000000'],
         ]);
 
-        $messages = collect($data['messages'])
-            ->take(-8)
+        $recentMessages = collect($data['messages'])->take(-8);
+        $messages = $recentMessages
             ->map(fn (array $message) => [
                 'role' => $message['role'],
                 'content' => trim(preg_replace('/\[topik:[^\]]+\]\s*/iu', '', $message['content'])),
             ])
             ->values()
             ->all();
-        $originalLatest = collect($data['messages'])->take(-8)->where('role', 'user')->last()['content'] ?? '';
+        $originalLatest = $recentMessages->where('role', 'user')->last()['content'] ?? '';
         $fallbackAction = $this->fallbackAction($originalLatest);
         $imageData = $data['image_data'] ?? null;
         $useVision = $imageData !== null;
@@ -86,33 +90,25 @@ class AiAssistantController extends Controller
             }
 
             $content = $response->json('choices.0.message.content', '');
-            \Illuminate\Support\Facades\Log::info('Groq Output: ' . $content);
-            
-            // Strip out Qwen reasoning blocks, even if cut off (unclosed)
-            $cleanContent = preg_replace('/<think>.*?<\/think>/is', '', $content);
-            $cleanContent = preg_replace('/<think>.*/is', '', $cleanContent);
-            
-            // Clean up possible markdown code blocks before decoding
-            $cleanContent = preg_replace('/```(?:json)?|```/i', '', $cleanContent);
+            \Illuminate\Support\Facades\Log::debug('Groq Output: ' . $content);
+
+            $cleanContent = preg_replace('/<think>.*?(?:<\/think>|$)/is', '', $content);
+            $cleanContent = preg_replace('/```(?:json)?/i', '', $cleanContent);
             $cleanContent = trim($cleanContent);
-            
+
             $payload = json_decode($cleanContent, true);
-            if (! $payload) {
-                // Regex fallback
-                if (preg_match('/\{.*\}/s', $cleanContent, $matches)) {
-                    $payload = json_decode($matches[0], true);
-                }
-                
-                // If it STILL fails, the AI outputted plain text instead of JSON
-                if (! $payload) {
-                    $payload = [
-                        'reply' => $cleanContent,
-                        'action' => ['type' => 'none'],
-                        'item_ids' => []
-                    ];
-                }
+
+            if (! $payload && preg_match('/\{.*\}/s', $cleanContent, $matches)) {
+                $payload = json_decode($matches[0], true);
             }
-            $payload = $payload ?: [];
+
+            if (! $payload) {
+                $payload = [
+                    'reply' => $cleanContent,
+                    'action' => ['type' => 'none'],
+                    'item_ids' => []
+                ];
+            }
             $reply = trim((string) ($payload['reply'] ?? ''));
             $actionPayload = $payload['action'] ?? null;
             $itemIds = $payload['item_ids'] ?? null;
@@ -122,12 +118,11 @@ class AiAssistantController extends Controller
                 $systemResult['items'] = collect($allItems)
                     ->filter(fn ($item) => in_array($item['id'], $itemIds))
                     ->values()
-                    ->take(3)
+                    ->take(self::VISION_SELECT_LIMIT)
                     ->toArray();
             } else {
-                $systemResult['items'] = array_slice($systemResult['items'], 0, 4);
+                $systemResult['items'] = array_slice($systemResult['items'], 0, self::FALLBACK_LIMIT);
             }
-
 
             return response()->json([
                 'reply' => $reply !== '' ? $reply : 'Saya siap membantu mencari barang atau menjelaskan alur pengambilan di SIPB UYM.',
@@ -196,6 +191,17 @@ class AiAssistantController extends Controller
         return [$text, $topic];
     }
 
+    private function matchFilterFromMessage(string $text, string $configKey): ?string
+    {
+        foreach (config("sipb.{$configKey}", []) as $value) {
+            if (Str::contains($text, Str::lower($value))) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
     private function hasSearchIntent(string $text): bool
     {
         if (Str::contains($text, ['syarat', 'prosedur', 'cara ambil', 'cara mengambil'])) {
@@ -237,6 +243,7 @@ class AiAssistantController extends Controller
 
         if ($shouldSearch) {
             $query = FoundItem::query()->visibleToPublic();
+            $limit = self::TEXT_MAX_ITEMS;
 
             if (! $hasImage) {
                 $parsedDate = $this->parseDateFromMessage($text);
@@ -244,23 +251,21 @@ class AiAssistantController extends Controller
                     $query->whereDate('found_at', $parsedDate);
                 }
 
-                foreach (config('sipb.locations', []) as $location) {
-                    if (Str::contains($text, Str::lower($location))) {
-                        $query->where('location', 'like', "%{$location}%");
-                        break;
-                    }
+                $matchedLocation = $this->matchFilterFromMessage($text, 'locations');
+                if ($matchedLocation) {
+                    $query->where('location', 'like', "%{$matchedLocation}%");
                 }
 
-                foreach (config('sipb.categories', []) as $category) {
-                    if (Str::contains($text, Str::lower($category))) {
-                        $query->where('category', 'like', "%{$category}%");
-                        break;
-                    }
+                $matchedCategory = $this->matchFilterFromMessage($text, 'categories');
+                if ($matchedCategory) {
+                    $query->where('category', 'like', "%{$matchedCategory}%");
                 }
+            } else {
+                $limit = self::VISION_MAX_ITEMS;
             }
 
             $collection = $query->latest('published_at')
-                ->limit(12)
+                ->limit($limit)
                 ->get(['id', 'name', 'category', 'location', 'photo_url', 'photo_data', 'description', 'found_at']);
 
             $items = $collection->map(fn (FoundItem $item) => sprintf(
@@ -383,18 +388,14 @@ PROMPT;
                 $query['date'] = $parsedDate->format('Y-m-d');
             }
 
-            foreach (config('sipb.locations', []) as $location) {
-                if (Str::contains($text, Str::lower($location))) {
-                    $query['location'] = $location;
-                    break;
-                }
+            $matchedLocation = $this->matchFilterFromMessage($text, 'locations');
+            if ($matchedLocation) {
+                $query['location'] = $matchedLocation;
             }
 
-            foreach (config('sipb.categories', []) as $category) {
-                if (Str::contains($text, Str::lower($category))) {
-                    $query['category'] = $category;
-                    break;
-                }
+            $matchedCategory = $this->matchFilterFromMessage($text, 'categories');
+            if ($matchedCategory) {
+                $query['category'] = $matchedCategory;
             }
 
             return [

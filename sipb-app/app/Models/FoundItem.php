@@ -35,6 +35,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class FoundItem extends Model
 {
+    public const STATUS_AVAILABLE = 'tersedia';
+    public const STATUS_CLAIMED = 'sudah_diambil';
+    public const STATUS_REVISION = 'perlu_revisi';
+    public const STATUS_REJECTED = 'ditolak';
+
+    public const EXPIRATION_DAYS = 30;
+
     private const TRACKING_PREFIX = 'SIPB-UYM';
     private const TRACKING_MULTIPLIER = 7919;
     private const TRACKING_SALT = 104729;
@@ -70,15 +77,20 @@ class FoundItem extends Model
 
     public function scopeVisibleToPublic(Builder $query): Builder
     {
-        return $query
-            ->where('status', 'tersedia')
-            ->whereNotNull('published_at')
-            ->where('published_at', '>=', now()->subDays(30));
+        return $query->where(function ($q) {
+            $q->where('status', self::STATUS_AVAILABLE)
+                ->whereNotNull('published_at')
+                ->where('published_at', '>=', now()->subDays(self::EXPIRATION_DAYS));
+        })->orWhere(function ($q) {
+            $q->where('status', self::STATUS_CLAIMED)
+                ->whereNotNull('claimed_at')
+                ->where('claimed_at', '>=', now()->subDay());
+        });
     }
 
     public function getIsExpiredAttribute(): bool
     {
-        return $this->published_at !== null && $this->published_at->lt(now()->subDays(30));
+        return $this->published_at !== null && $this->published_at->lt(now()->subDays(self::EXPIRATION_DAYS));
     }
 
     public function trackingCode(): string

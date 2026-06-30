@@ -27,6 +27,22 @@ const civitasLogo = "/assets/civitas_lfs.png";
 const mobileMenuIcon = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDIiIGhlaWdodD0iNDIiIHZpZXdCb3g9IjAgMCA0MiA0MiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjEiIGN5PSIyMSIgcj0iMjEiIGZpbGw9IiMxNjE4MUUiLz4KPHBhdGggZD0iTTEzIDE1QzEzIDE0LjQ0NzcgMTMuNDQ3NyAxNCAxNCAxNEgyNkMyNi41NTIzIDE0IDI3IDE0LjQ0NzcgMjcgMTVDMjcgMTUuNTUyMyAyNi41NTIzIDE2IDI2IDE2SDE0QzEzLjQ0NzcgMTYgMTMgMTUuNTUyMyAxMyAxNVoiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0xMyAyMUMxMyAyMC40NDc3IDEzLjQ0NzcgMjAgMTQgMjBIMjlDMjkuNTUyMyAyMCAzMCAyMC40NDc3IDMwIDIxQzMwIDIxLjU1MjMgMjkuNTUyMyAyMiAyOSAyMkgxNEMxMy40NDc3IDIyIDEzIDIxLjU1MjMgMTMgMjFaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMjIgMjdDMjIgMjYuNDQ3NyAyMS41NTIzIDI2IDIxIDI2SDE0QzEzLjQ0NzcgMjYgMTMgMjYuNDQ3NyAxMyAyN0MxMyAyNy41NTIzIDEzLjQ0NzcgMjggMTQgMjhIMjFDMjEuNTUyMyAyOCAyMiAyNy41NTIzIDIyIDI3WiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+Cg==";
 let clockTimer = null;
 
+const insightsData = ref(props.insights);
+const selectedPeriod = ref("");
+
+async function fetchInsights() {
+    const period = selectedPeriod.value;
+    const url = period ? `/admin/insights?period=${period}` : '/admin/insights';
+    try {
+        const res = await fetch(url);
+        if (res.ok) {
+            insightsData.value = await res.json();
+        }
+    } catch {
+        // fallback to existing data
+    }
+}
+
 const todayLabel = computed(() => new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
     month: "short",
@@ -102,7 +118,7 @@ const statCards = computed(() => [
 const recentItems = computed(() => (props.latest ?? []).slice(0, 4));
 
 const chartMaxY = computed(() => {
-    const maxData = Math.max(...(props.insights?.categories?.map((c) => c.total) || [0]), 10);
+    const maxData = Math.max(...(insightsData.value?.categories?.map((c) => c.total) || [0]), 10);
     return Math.ceil(maxData * 1.2);
 });
 
@@ -117,21 +133,21 @@ function chartRows(rows, maxScale = null) {
     }));
 }
 
-const categoryChart = computed(() => chartRows(props.insights.categories, chartMaxY.value));
-const locationChart = computed(() => chartRows(props.insights.locations));
+const categoryChart = computed(() => chartRows(insightsData.value?.categories, chartMaxY.value));
+const locationChart = computed(() => chartRows(insightsData.value?.locations));
 
 const trendChart = computed(() => {
-    let months = [...(props.insights.months ?? [])].reverse();
+    let months = [...(insightsData.value?.months ?? [])].reverse();
     if (months.length === 0) return [];
 
-    const maxTotal = Math.max(...months.map((m) => m.total), 4); // minimum y-axis scale of 4
+    const maxTotal = Math.max(...months.map((m) => m.total), 4);
 
     const w = 1000;
-    const h = 180; // leave 20px padding at top
+    const h = 180;
     const step = months.length > 1 ? w / (months.length - 1) : w;
 
     return months.map((item, index) => {
-        const x = index * step;
+        const x = months.length === 1 ? w / 2 : index * step;
         const y = h - (item.total / maxTotal) * h + 20;
 
         const date = new Date(item.month + '-01');
@@ -143,6 +159,10 @@ const trendChart = computed(() => {
 
 const trendPath = computed(() => {
     if (!trendChart.value.length) return '';
+    if (trendChart.value.length === 1) {
+        const p = trendChart.value[0];
+        return `M 0 ${p.y} L 1000 ${p.y}`;
+    }
     return trendChart.value.map((point, index) => 
         (index === 0 ? 'M' : 'L') + ` ${point.x} ${point.y}`
     ).join(' ');
@@ -150,6 +170,10 @@ const trendPath = computed(() => {
 
 const trendArea = computed(() => {
     if (!trendChart.value.length) return '';
+    if (trendChart.value.length === 1) {
+        const p = trendChart.value[0];
+        return `M 0 ${p.y} L 1000 ${p.y} L 1000 220 L 0 220 Z`;
+    }
     const last = trendChart.value[trendChart.value.length - 1];
     const first = trendChart.value[0];
     
@@ -261,8 +285,15 @@ onBeforeUnmount(() => {
                                 Total Laporan
                             </span>
                         </div>
-                        <select class="sipb-input max-w-[190px] !min-h-10 !py-2 !text-sm text-[#747a8b]">
-                            <option>Semua waktu</option>
+                        <select
+                            v-model="selectedPeriod"
+                            class="sipb-input max-w-[190px] !min-h-10 !py-2 !text-sm text-[#747a8b]"
+                            @change="fetchInsights"
+                        >
+                            <option value="">Semua waktu</option>
+                            <option value="7">7 hari</option>
+                            <option value="30">30 hari</option>
+                            <option value="90">90 hari</option>
                         </select>
                     </div>
 
@@ -316,6 +347,42 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
                     </div>
+                </section>
+
+                <section class="sipb-panel mb-4 p-4 md:p-5">
+                    <div class="mb-4 flex flex-wrap items-center gap-4">
+                        <h2 class="text-[17px] font-extrabold text-[#071735]">Tren Laporan per Bulan</h2>
+                        <span class="inline-flex items-center gap-2 text-sm font-semibold text-[#1a2134]">
+                            <span class="h-3.5 w-3.5 rounded-sm bg-[#00bf8e]"></span>
+                            Jumlah Laporan
+                        </span>
+                    </div>
+                    <div v-if="trendChart.length" class="relative w-full" style="aspect-ratio: 1000 / 240">
+                        <svg viewBox="0 0 1000 240" class="h-full w-full overflow-visible">
+                            <path :d="trendArea" fill="rgba(0, 191, 142, 0.08)" />
+                            <path :d="trendPath" fill="none" stroke="#00bf8e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                            <circle
+                                v-for="point in trendChart"
+                                :key="point.month"
+                                :cx="point.x" :cy="point.y" r="4"
+                                fill="#fff" stroke="#00bf8e" stroke-width="2.5"
+                                class="cursor-pointer"
+                            >
+                                <title>{{ point.label }}: {{ point.total }} laporan</title>
+                            </circle>
+                            <text
+                                v-for="point in trendChart"
+                                :key="`label-${point.month}`"
+                                :x="point.x" y="230"
+                                text-anchor="middle"
+                                class="text-xs font-semibold"
+                                fill="#747a8b"
+                            >{{ point.label }}</text>
+                        </svg>
+                    </div>
+                    <p v-else class="py-8 text-center text-sm font-semibold text-[#747a8b]">
+                        Belum ada data tren.
+                    </p>
                 </section>
 
                 <section class="sipb-panel mb-4 overflow-hidden">

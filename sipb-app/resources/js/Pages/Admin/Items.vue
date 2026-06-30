@@ -45,7 +45,6 @@ const props = defineProps({
 
 const filters = reactive({
     q: props.filters.q ?? "",
-    status: props.filters.status ?? "",
     category: props.filters.category ?? "",
     location: props.filters.location ?? "",
     per_page: props.filters.per_page ?? 10,
@@ -67,15 +66,20 @@ const editPhotoInput = ref(null);
 const editUploadedPhotoId = ref(null);
 const editPhotoDropdownOpen = ref(false);
 const editPhotoDropdownButton = ref(null);
-const editSelectedPhoto = computed(() =>
-    uploadedPhotos.value.find((p) => p.id === editUploadedPhotoId.value) ?? null,
+const editSelectedPhoto = computed(
+    () =>
+        uploadedPhotos.value.find((p) => p.id === editUploadedPhotoId.value) ??
+        null,
 );
 const uploadedPhotos = ref([]);
 const selectedUploadedPhotoId = ref(null);
 const photoDropdownOpen = ref(false);
 const photoDropdownButton = ref(null);
-const selectedPhoto = computed(() =>
-    uploadedPhotos.value.find((p) => p.id === selectedUploadedPhotoId.value) ?? null,
+const selectedPhoto = computed(
+    () =>
+        uploadedPhotos.value.find(
+            (p) => p.id === selectedUploadedPhotoId.value,
+        ) ?? null,
 );
 const fallbackImage = "/assets/logo-uym.png";
 const maxPhotoSize = 4 * 1024 * 1024;
@@ -93,7 +97,8 @@ async function fetchUploadedPhotos() {
 }
 
 function selectUploadedPhoto(photo) {
-    selectedUploadedPhotoId.value = selectedUploadedPhotoId.value === photo.id ? null : photo.id;
+    selectedUploadedPhotoId.value =
+        selectedUploadedPhotoId.value === photo.id ? null : photo.id;
     form.uploaded_photo_id = selectedUploadedPhotoId.value;
     if (selectedUploadedPhotoId.value) {
         form.photo = null;
@@ -130,7 +135,8 @@ function handlePhotoDropdownClickOutside(event) {
 }
 
 function selectEditUploadedPhoto(photo) {
-    editUploadedPhotoId.value = editUploadedPhotoId.value === photo.id ? null : photo.id;
+    editUploadedPhotoId.value =
+        editUploadedPhotoId.value === photo.id ? null : photo.id;
     editForm.uploaded_photo_id = editUploadedPhotoId.value;
     if (editUploadedPhotoId.value) {
         editForm.photo = null;
@@ -169,7 +175,6 @@ const form = useForm({
     photo: null,
     uploaded_photo_id: null,
     finder_name: "",
-    finder_nim: "",
     storage_location: "Resepsionis",
     admin_notes: "",
     status: "tersedia",
@@ -185,9 +190,6 @@ const skeletonRows = computed(() =>
 const activeFilters = computed(() =>
     [
         filters.q ? { key: "q", label: `Keyword: ${filters.q}` } : null,
-        filters.status
-            ? { key: "status", label: `Status: ${statusLabel(filters.status)}` }
-            : null,
         filters.category
             ? { key: "category", label: `Kategori: ${filters.category}` }
             : null,
@@ -197,7 +199,8 @@ const activeFilters = computed(() =>
     ].filter(Boolean),
 );
 const overview = computed(() => ({
-    available: itemRows.value.filter((item) => item.status === "tersedia").length,
+    available: itemRows.value.filter((item) => item.status === "tersedia")
+        .length,
 }));
 
 const editForm = useForm({
@@ -353,7 +356,6 @@ function openEditForm(item) {
         found_at: toDateTimeLocal(item.found_at),
         photo: null,
         finder_name: item.finder_name ?? "",
-        finder_nim: item.finder_nim ?? "",
         storage_location: item.storage_location ?? "",
         admin_notes: item.admin_notes ?? "",
     });
@@ -402,7 +404,6 @@ function clearFilter(key) {
 
 function resetFilters() {
     filters.q = "";
-    filters.status = "";
     filters.category = "";
     filters.location = "";
     filters.per_page = 10;
@@ -445,7 +446,6 @@ function submit() {
                 "photo",
                 "uploaded_photo_id",
                 "finder_name",
-                "finder_nim",
                 "storage_location",
                 "admin_notes",
             );
@@ -465,15 +465,15 @@ function submitEdit() {
 
     let hasError = false;
     if (!editForm.name) {
-        editForm.setError('name', 'Nama barang wajib diisi.');
+        editForm.setError("name", "Nama barang wajib diisi.");
         hasError = true;
     }
     if (!editForm.description) {
-        editForm.setError('description', 'Deskripsi wajib diisi.');
+        editForm.setError("description", "Deskripsi wajib diisi.");
         hasError = true;
     }
     if (!editForm.found_at) {
-        editForm.setError('found_at', 'Tanggal/jam wajib diisi.');
+        editForm.setError("found_at", "Tanggal/jam wajib diisi.");
         hasError = true;
     }
     if (hasError) return;
@@ -751,18 +751,6 @@ onBeforeUnmount(() => {
         >
             <label class="block">
                 <span class="mb-1.5 block text-sm font-bold text-[#1a2134]"
-                    >Status</span
-                >
-                <select
-                    v-model="filters.status"
-                    class="w-full rounded-md border border-[#e2e8f0] px-3 py-2.5 text-sm focus:border-[#2737c9] focus:outline-none focus:ring-1 focus:ring-[#2737c9]"
-                >
-                    <option value="">Semua Status</option>
-                    <option value="tersedia">Tersedia / Dipublish</option>
-                </select>
-            </label>
-            <label class="block">
-                <span class="mb-1.5 block text-sm font-bold text-[#1a2134]"
                     >Kategori</span
                 >
                 <select
@@ -937,13 +925,29 @@ onBeforeUnmount(() => {
                                         :src="selectedPhoto.photo_data"
                                         class="h-10 w-10 shrink-0 rounded object-cover"
                                     />
-                                    <span class="flex-1 text-left font-semibold text-[#1a2134]">
-                                        {{ new Date(selectedPhoto.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) }}
+                                    <span
+                                        class="flex-1 text-left font-semibold text-[#1a2134]"
+                                    >
+                                        {{
+                                            new Date(
+                                                selectedPhoto.created_at,
+                                            ).toLocaleDateString("id-ID", {
+                                                day: "2-digit",
+                                                month: "short",
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                            })
+                                        }}
                                     </span>
                                 </template>
                                 <template v-else>
-                                    <Image class="h-5 w-5 shrink-0 text-[#747a8b]" />
-                                    <span class="flex-1 text-left text-[#64748b]">Pilih dari galeri</span>
+                                    <Image
+                                        class="h-5 w-5 shrink-0 text-[#747a8b]"
+                                    />
+                                    <span
+                                        class="flex-1 text-left text-[#64748b]"
+                                        >Pilih dari galeri</span
+                                    >
                                 </template>
                                 <ChevronDown
                                     class="h-4 w-4 shrink-0 text-[#747a8b] transition-transform"
@@ -958,7 +962,11 @@ onBeforeUnmount(() => {
                                 >
                                     <div
                                         class="grid grid-cols-4 gap-2"
-                                        :class="uploadedPhotos.length > 12 ? 'max-h-60 overflow-y-auto' : ''"
+                                        :class="
+                                            uploadedPhotos.length > 12
+                                                ? 'max-h-60 overflow-y-auto'
+                                                : ''
+                                        "
                                     >
                                         <button
                                             v-for="photo in uploadedPhotos"
@@ -966,7 +974,8 @@ onBeforeUnmount(() => {
                                             type="button"
                                             :class="[
                                                 'relative aspect-square overflow-hidden rounded-lg border-2 transition-all',
-                                                selectedUploadedPhotoId === photo.id
+                                                selectedUploadedPhotoId ===
+                                                photo.id
                                                     ? 'border-[#2737c9] ring-2 ring-[#2737c9]/30'
                                                     : 'border-transparent hover:border-[#cbd5e1]',
                                             ]"
@@ -978,10 +987,15 @@ onBeforeUnmount(() => {
                                                 class="h-full w-full object-cover"
                                             />
                                             <span
-                                                v-if="selectedUploadedPhotoId === photo.id"
+                                                v-if="
+                                                    selectedUploadedPhotoId ===
+                                                    photo.id
+                                                "
                                                 class="absolute inset-0 grid place-items-center bg-[#2737c9]/20"
                                             >
-                                                <CheckCircle2 class="h-5 w-5 text-white drop-shadow" />
+                                                <CheckCircle2
+                                                    class="h-5 w-5 text-white drop-shadow"
+                                                />
                                             </span>
                                         </button>
                                     </div>
@@ -1011,19 +1025,15 @@ onBeforeUnmount(() => {
                         </p>
                     </div>
                     <label class="block">
-                        <span class="sipb-label">Nama/NIM penemu</span>
-                        <div class="grid gap-2 sm:grid-cols-2">
-                            <input
-                                v-model="form.finder_name"
-                                class="sipb-input"
-                                placeholder="Nama"
-                            />
-                            <input
-                                v-model="form.finder_nim"
-                                class="sipb-input"
-                                placeholder="NIM"
-                            />
-                        </div>
+                        <span class="sipb-label"
+                            >Nama penemu
+                            <span class="sipb-optional">(opsional)</span></span
+                        >
+                        <input
+                            v-model="form.finder_name"
+                            class="sipb-input"
+                            placeholder="Nama penemu"
+                        />
                     </label>
                     <label class="block">
                         <span class="sipb-label">Lokasi penyimpanan</span>
@@ -1224,6 +1234,7 @@ onBeforeUnmount(() => {
                         <col class="w-[165px]" />
                         <col class="w-[170px]" />
                         <col class="w-[140px]" />
+                        <col class="w-[140px]" />
                         <col class="w-[165px]" />
                         <col class="w-[210px]" />
                     </colgroup>
@@ -1260,6 +1271,14 @@ onBeforeUnmount(() => {
                                 ]"
                             >
                                 Penemu
+                            </th>
+                            <th
+                                :class="[
+                                    isDenseTable ? 'px-3 py-2.5' : 'px-4 py-3',
+                                    'font-bold text-[#1a2134]',
+                                ]"
+                            >
+                                Admin
                             </th>
                             <th
                                 :class="[
@@ -1357,6 +1376,15 @@ onBeforeUnmount(() => {
                                             : 'px-4 py-3',
                                     ]"
                                 >
+                                    <span class="sipb-skeleton h-4 w-24"></span>
+                                </td>
+                                <td
+                                    :class="[
+                                        isDenseTable
+                                            ? 'px-3 py-2'
+                                            : 'px-4 py-3',
+                                    ]"
+                                >
                                     <span class="sipb-skeleton h-7 w-24"></span>
                                 </td>
                                 <td
@@ -1394,7 +1422,7 @@ onBeforeUnmount(() => {
                             class="border-b border-[#f1f5f9] bg-white"
                         >
                             <td
-                                colspan="7"
+                                colspan="8"
                                 :class="[
                                     isDenseTable ? 'px-3 py-8' : 'px-4 py-8',
                                     'text-center text-[#747a8b]',
@@ -1484,6 +1512,16 @@ onBeforeUnmount(() => {
                                 </p>
                                 <p class="text-xs text-[#9da3b1]">
                                     {{ item.finder_nim || "" }}
+                                </p>
+                            </td>
+                            <td
+                                :class="[
+                                    isDenseTable ? 'px-3 py-2' : 'px-4 py-3',
+                                    'align-middle text-[#747a8b]',
+                                ]"
+                            >
+                                <p class="truncate font-semibold">
+                                    {{ item.manager?.name ?? "-" }}
                                 </p>
                             </td>
                             <td
@@ -2217,19 +2255,12 @@ onBeforeUnmount(() => {
                         </p>
                     </label>
                     <label class="block">
-                        <span class="sipb-label">Nama/NIM pelapor</span>
-                        <div class="grid gap-2 sm:grid-cols-2">
-                            <input
-                                v-model="editForm.finder_name"
-                                class="sipb-input"
-                                placeholder="Nama"
-                            />
-                            <input
-                                v-model="editForm.finder_nim"
-                                class="sipb-input"
-                                placeholder="NIM"
-                            />
-                        </div>
+                        <span class="sipb-label">Nama pelapor</span>
+                        <input
+                            v-model="editForm.finder_name"
+                            class="sipb-input"
+                            placeholder="Nama pelapor"
+                        />
                     </label>
                     <div class="block">
                         <span class="sipb-label flex items-center gap-2">
@@ -2289,17 +2320,35 @@ onBeforeUnmount(() => {
                                         :src="editSelectedPhoto.photo_data"
                                         class="h-10 w-10 shrink-0 rounded object-cover"
                                     />
-                                    <span class="flex-1 text-left font-semibold text-[#1a2134]">
-                                        {{ new Date(editSelectedPhoto.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) }}
+                                    <span
+                                        class="flex-1 text-left font-semibold text-[#1a2134]"
+                                    >
+                                        {{
+                                            new Date(
+                                                editSelectedPhoto.created_at,
+                                            ).toLocaleDateString("id-ID", {
+                                                day: "2-digit",
+                                                month: "short",
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                            })
+                                        }}
                                     </span>
                                 </template>
                                 <template v-else>
-                                    <Image class="h-5 w-5 shrink-0 text-[#747a8b]" />
-                                    <span class="flex-1 text-left text-[#64748b]">Pilih dari galeri</span>
+                                    <Image
+                                        class="h-5 w-5 shrink-0 text-[#747a8b]"
+                                    />
+                                    <span
+                                        class="flex-1 text-left text-[#64748b]"
+                                        >Pilih dari galeri</span
+                                    >
                                 </template>
                                 <ChevronDown
                                     class="h-4 w-4 shrink-0 text-[#747a8b] transition-transform"
-                                    :class="{ 'rotate-180': editPhotoDropdownOpen }"
+                                    :class="{
+                                        'rotate-180': editPhotoDropdownOpen,
+                                    }"
                                 />
                             </button>
 
@@ -2310,7 +2359,11 @@ onBeforeUnmount(() => {
                                 >
                                     <div
                                         class="grid grid-cols-4 gap-2"
-                                        :class="uploadedPhotos.length > 12 ? 'max-h-60 overflow-y-auto' : ''"
+                                        :class="
+                                            uploadedPhotos.length > 12
+                                                ? 'max-h-60 overflow-y-auto'
+                                                : ''
+                                        "
                                     >
                                         <button
                                             v-for="photo in uploadedPhotos"
@@ -2322,7 +2375,9 @@ onBeforeUnmount(() => {
                                                     ? 'border-[#2737c9] ring-2 ring-[#2737c9]/30'
                                                     : 'border-transparent hover:border-[#cbd5e1]',
                                             ]"
-                                            @click="selectEditUploadedPhoto(photo)"
+                                            @click="
+                                                selectEditUploadedPhoto(photo)
+                                            "
                                         >
                                             <img
                                                 :src="photo.photo_data"
@@ -2330,10 +2385,15 @@ onBeforeUnmount(() => {
                                                 class="h-full w-full object-cover"
                                             />
                                             <span
-                                                v-if="editUploadedPhotoId === photo.id"
+                                                v-if="
+                                                    editUploadedPhotoId ===
+                                                    photo.id
+                                                "
                                                 class="absolute inset-0 grid place-items-center bg-[#2737c9]/20"
                                             >
-                                                <CheckCircle2 class="h-5 w-5 text-white drop-shadow" />
+                                                <CheckCircle2
+                                                    class="h-5 w-5 text-white drop-shadow"
+                                                />
                                             </span>
                                         </button>
                                     </div>

@@ -33,12 +33,20 @@ function handleFileSelect(event) {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-        Swal.fire({ icon: "error", title: "Gagal", text: "File harus berupa gambar." });
+        Swal.fire({
+            icon: "error",
+            title: "Gagal",
+            text: "File harus berupa gambar.",
+        });
         return;
     }
 
     if (file.size > 4 * 1024 * 1024) {
-        Swal.fire({ icon: "error", title: "Gagal", text: "Ukuran foto maksimal 4 MB." });
+        Swal.fire({
+            icon: "error",
+            title: "Gagal",
+            text: "Ukuran foto maksimal 4 MB.",
+        });
         return;
     }
 
@@ -213,7 +221,17 @@ onBeforeUnmount(() => {
                         class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent px-3 pb-2 pt-6"
                     >
                         <p class="text-[11px] font-semibold text-white/90">
-                            {{ new Date(photo.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) }}
+                            {{
+                                new Date(photo.created_at).toLocaleDateString(
+                                    "id-ID",
+                                    {
+                                        day: "2-digit",
+                                        month: "short",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                    },
+                                )
+                            }}
                         </p>
                     </div>
                 </div>

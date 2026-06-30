@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\FoundItem;
 use App\Models\StatusAudit;
-use Illuminate\Support\Str;
 
 class FoundItemPayloadService
 {
@@ -21,6 +20,8 @@ class FoundItemPayloadService
             'published_at' => $item->published_at?->toISOString(),
             'photo_url' => $item->photo_data ?: $item->photo_url,
             'status' => $item->status,
+            'claimer_name' => $item->claimant_name,
+            'claimed_at' => $item->claimed_at?->toISOString(),
             'finder_name' => $item->finder_name,
 
         ];
@@ -69,9 +70,6 @@ class FoundItemPayloadService
             'pickup_checklist' => $item->pickup_checklist,
             'manager' => $item->manager?->only('name', 'email'),
             'is_expired' => $item->is_expired,
-            'duplicate_candidates' => $item->status === 'draft'
-                ? $this->duplicateCandidates($item)
-                : [],
             'audits' => $item->relationLoaded('audits')
                 ? $item->audits
                     ->sortByDesc('created_at')
@@ -87,30 +85,5 @@ class FoundItemPayloadService
                     ])
                 : [],
         ];
-    }
-
-    private function duplicateCandidates(FoundItem $item): array
-    {
-        $firstWord = Str::of($item->name)->explode(' ')->first();
-
-        return FoundItem::query()
-            ->whereKeyNot($item->id)
-            ->where('category', $item->category)
-            ->where(function ($query) use ($item, $firstWord): void {
-                $query
-                    ->where('location', $item->location)
-                    ->orWhere('name', 'like', '%'.$firstWord.'%');
-            })
-            ->latest()
-            ->limit(3)
-            ->get(['id', 'name', 'location', 'status', 'created_at'])
-            ->map(fn (FoundItem $candidate) => [
-                'id' => $candidate->id,
-                'name' => $candidate->name,
-                'location' => $candidate->location,
-                'status' => $candidate->status,
-                'created_at' => $candidate->created_at?->toISOString(),
-            ])
-            ->all();
     }
 }

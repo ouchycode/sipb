@@ -23,7 +23,7 @@ class PublicItemController extends Controller
         return Inertia::render('Public/Index', [
             'stats' => [
                 'posted' => FoundItem::whereNotNull('published_at')->count(),
-                'recovered' => FoundItem::where('status', 'sudah_diambil')->count(),
+                'recovered' => FoundItem::where('status', FoundItem::STATUS_CLAIMED)->count(),
                 'active' => FoundItem::visibleToPublic()->count(),
             ],
         ]);
@@ -31,7 +31,7 @@ class PublicItemController extends Controller
 
     public function index(Request $request): Response
     {
-        $filters = $request->only(['q', 'category', 'location', 'date', 'sort', 'per_page']);
+        $filters = $request->only(['q', 'status', 'category', 'location', 'date', 'sort', 'per_page']);
         $sort = $filters['sort'] ?? 'newest';
         $perPage = min((int) ($filters['per_page'] ?? 9), 50);
 
@@ -46,6 +46,7 @@ class PublicItemController extends Controller
                         ->orWhere('location', 'like', "%{$keyword}%");
                 });
             })
+            ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->when($filters['category'] ?? null, fn ($query, string $category) => $query->where('category', $category))
             ->when($filters['location'] ?? null, fn ($query, string $location) => $query->where('location', $location))
             ->when($filters['date'] ?? null, fn ($query, string $date) => $query->whereDate('found_at', $date))
@@ -76,9 +77,12 @@ class PublicItemController extends Controller
     public function show(FoundItem $item): Response
     {
         abort_unless(
-            $item->status === 'tersedia'
-            && $item->published_at !== null
-            && $item->published_at->greaterThanOrEqualTo(now()->subDays(30)),
+            ($item->status === FoundItem::STATUS_AVAILABLE
+                && $item->published_at !== null
+                && $item->published_at->greaterThanOrEqualTo(now()->subDays(FoundItem::EXPIRATION_DAYS)))
+            || ($item->status === FoundItem::STATUS_CLAIMED
+                && $item->claimed_at !== null
+                && $item->claimed_at->greaterThanOrEqualTo(now()->subDay())),
             404
         );
 

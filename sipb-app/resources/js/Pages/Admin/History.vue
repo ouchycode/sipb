@@ -65,8 +65,12 @@ function resetFilters() {
 const activeFilters = computed(() =>
     [
         filters.q ? { key: "q", label: `Keyword: ${filters.q}` } : null,
-        filters.category ? { key: "category", label: `Kategori: ${filters.category}` } : null,
-        filters.location ? { key: "location", label: `Lokasi: ${filters.location}` } : null,
+        filters.category
+            ? { key: "category", label: `Kategori: ${filters.category}` }
+            : null,
+        filters.location
+            ? { key: "location", label: `Lokasi: ${filters.location}` }
+            : null,
     ].filter(Boolean),
 );
 
@@ -92,11 +96,13 @@ function closeImagePreview() {
 }
 
 function itemStatusLabel(item) {
-    return item.claimed_at ? statusLabel(item.status) : 'Kadaluarsa';
+    return item.claimed_at ? statusLabel(item.status) : "Kadaluarsa";
 }
 
 function itemStatusClass(item) {
-    return item.claimed_at ? statusClass(item.status) : statusClass('kadaluarsa');
+    return item.claimed_at
+        ? statusClass(item.status)
+        : statusClass("kadaluarsa");
 }
 
 onMounted(() => {
@@ -163,10 +169,7 @@ onBeforeUnmount(() => {
             </div>
         </section>
 
-        <SearchToolbar
-            v-model="filters.q"
-            @search="applyFilters"
-        >
+        <SearchToolbar v-model="filters.q" @search="applyFilters">
             <template #actions>
                 <button
                     type="button"
@@ -187,7 +190,9 @@ onBeforeUnmount(() => {
             @reset="resetFilters"
         >
             <label class="block">
-                <span class="mb-1.5 block text-sm font-bold text-[#1a2134]">Kategori</span>
+                <span class="mb-1.5 block text-sm font-bold text-[#1a2134]"
+                    >Kategori</span
+                >
                 <select
                     v-model="filters.category"
                     class="w-full rounded-md border border-[#e2e8f0] px-3 py-2.5 text-sm focus:border-[#2737c9] focus:outline-none focus:ring-1 focus:ring-[#2737c9]"
@@ -203,7 +208,9 @@ onBeforeUnmount(() => {
                 </select>
             </label>
             <label class="block">
-                <span class="mb-1.5 block text-sm font-bold text-[#1a2134]">Lokasi</span>
+                <span class="mb-1.5 block text-sm font-bold text-[#1a2134]"
+                    >Lokasi</span
+                >
                 <select
                     v-model="filters.location"
                     class="w-full rounded-md border border-[#e2e8f0] px-3 py-2.5 text-sm focus:border-[#2737c9] focus:outline-none focus:ring-1 focus:ring-[#2737c9]"
@@ -391,10 +398,21 @@ onBeforeUnmount(() => {
                                 :key="`history-row-skeleton-${index}`"
                                 class="align-middle"
                             >
-                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
+                                <td
+                                    :class="[
+                                        isDenseTable
+                                            ? 'px-3 py-2'
+                                            : 'px-4 py-3',
+                                    ]"
+                                >
                                     <div class="flex items-center gap-3">
                                         <span
-                                            :class="['sipb-skeleton shrink-0', isDenseTable ? 'h-9 w-11' : 'h-12 w-14']"
+                                            :class="[
+                                                'sipb-skeleton shrink-0',
+                                                isDenseTable
+                                                    ? 'h-9 w-11'
+                                                    : 'h-12 w-14',
+                                            ]"
                                         ></span>
                                         <div class="min-w-0 flex-1 space-y-2">
                                             <span
@@ -406,16 +424,40 @@ onBeforeUnmount(() => {
                                         </div>
                                     </div>
                                 </td>
-                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
+                                <td
+                                    :class="[
+                                        isDenseTable
+                                            ? 'px-3 py-2'
+                                            : 'px-4 py-3',
+                                    ]"
+                                >
                                     <span class="sipb-skeleton h-4 w-32"></span>
                                 </td>
-                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
+                                <td
+                                    :class="[
+                                        isDenseTable
+                                            ? 'px-3 py-2'
+                                            : 'px-4 py-3',
+                                    ]"
+                                >
                                     <span class="sipb-skeleton h-4 w-28"></span>
                                 </td>
-                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
+                                <td
+                                    :class="[
+                                        isDenseTable
+                                            ? 'px-3 py-2'
+                                            : 'px-4 py-3',
+                                    ]"
+                                >
                                     <span class="sipb-skeleton h-4 w-28"></span>
                                 </td>
-                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
+                                <td
+                                    :class="[
+                                        isDenseTable
+                                            ? 'px-3 py-2'
+                                            : 'px-4 py-3',
+                                    ]"
+                                >
                                     <div class="space-y-2">
                                         <span
                                             class="sipb-skeleton h-4 w-32"
@@ -425,13 +467,31 @@ onBeforeUnmount(() => {
                                         ></span>
                                     </div>
                                 </td>
-                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
+                                <td
+                                    :class="[
+                                        isDenseTable
+                                            ? 'px-3 py-2'
+                                            : 'px-4 py-3',
+                                    ]"
+                                >
                                     <span class="sipb-skeleton h-4 w-24"></span>
                                 </td>
-                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
+                                <td
+                                    :class="[
+                                        isDenseTable
+                                            ? 'px-3 py-2'
+                                            : 'px-4 py-3',
+                                    ]"
+                                >
                                     <span class="sipb-skeleton h-7 w-28"></span>
                                 </td>
-                                <td :class="[isDenseTable ? 'px-3 py-2' : 'px-4 py-3']">
+                                <td
+                                    :class="[
+                                        isDenseTable
+                                            ? 'px-3 py-2'
+                                            : 'px-4 py-3',
+                                    ]"
+                                >
                                     <span class="sipb-skeleton h-7 w-20"></span>
                                 </td>
                             </tr>

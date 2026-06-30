@@ -65,34 +65,56 @@ function closeImagePreview() {
             </div>
 
             <aside class="sipb-accent-panel h-max p-5 lg:sticky lg:top-6">
-                <div class="mb-5 sipb-panel p-4">
-                    <div class="flex items-start gap-3">
-                        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-[#2737c9] text-white">
-                            <ClipboardCheck class="h-5 w-5" />
-                        </span>
-                        <div>
-                            <p class="font-extrabold text-[#1a2134]">Ingin mengambil barang ini?</p>
-                            <p class="mt-1 text-sm leading-6 text-[#64748b]">
-                                Datang ke admin layanan lost and found, tunjukkan kode barang, lalu admin memvalidasi bukti kepemilikan langsung di tempat.
-                            </p>
+                <template v-if="item.status === 'sudah_diambil'">
+                    <div class="mb-5 sipb-panel p-4">
+                        <div class="flex items-start gap-3">
+                            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-[#16a34a] text-white">
+                                <Check class="h-5 w-5" />
+                            </span>
+                            <div>
+                                <p class="font-extrabold text-[#1a2134]">Barang sudah diambil</p>
+                                <p class="mt-1 text-sm leading-6 text-[#64748b]">
+                                    Barang ini telah diambil<span v-if="item.claimer_name"> oleh <strong>{{ item.claimer_name }}</strong></span> pada {{ formatDate(item.claimed_at) }}.
+                                </p>
+                            </div>
                         </div>
                     </div>
-
-                </div>
-                <div class="flex items-center gap-2 text-sm font-bold text-[#1a2134]">
-                    <Info class="h-4 w-4" />
-                    Instruksi pengambilan
-                </div>
-                <p class="sipb-muted mt-3 text-sm leading-6">
-                    Jika barang ini milik Anda, datang ke admin dengan identitas kampus dan bukti kepemilikan. Jika cocok, admin langsung menandai barang sebagai sudah diambil.
-                </p>
-                <p class="sipb-muted mt-3 text-sm leading-6">
-                    Halaman publik tidak menampilkan kontak pribadi penemu barang.
-                </p>
-
-                <div class="mt-5 rounded-md bg-[#fff7ed] p-4 text-sm font-semibold leading-6 text-[#8a5b12]">
-                    Pengambilan barang hanya diproses langsung di pos layanan agar admin bisa mencocokkan identitas dan bukti kepemilikan.
-                </div>
+                    <div class="flex items-center gap-2 text-sm font-bold text-amber-700">
+                        <Info class="h-4 w-4" />
+                        Arsip sementara
+                    </div>
+                    <p class="sipb-muted mt-3 text-sm leading-6">
+                        Halaman ini ditampilkan selama 24 jam sejak barang diambil untuk keperluan verifikasi. Setelah itu tidak akan muncul lagi di pencarian publik.
+                    </p>
+                </template>
+                <template v-else>
+                    <div class="mb-5 sipb-panel p-4">
+                        <div class="flex items-start gap-3">
+                            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-[#2737c9] text-white">
+                                <ClipboardCheck class="h-5 w-5" />
+                            </span>
+                            <div>
+                                <p class="font-extrabold text-[#1a2134]">Ingin mengambil barang ini?</p>
+                                <p class="mt-1 text-sm leading-6 text-[#64748b]">
+                                    Datang ke admin layanan lost and found, tunjukkan kode barang, lalu admin memvalidasi bukti kepemilikan langsung di tempat.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 text-sm font-bold text-[#1a2134]">
+                        <Info class="h-4 w-4" />
+                        Instruksi pengambilan
+                    </div>
+                    <p class="sipb-muted mt-3 text-sm leading-6">
+                        Jika barang ini milik Anda, datang ke admin dengan identitas kampus dan bukti kepemilikan. Jika cocok, admin langsung menandai barang sebagai sudah diambil.
+                    </p>
+                    <p class="sipb-muted mt-3 text-sm leading-6">
+                        Halaman publik tidak menampilkan kontak pribadi penemu barang.
+                    </p>
+                    <div class="mt-5 rounded-md bg-[#fff7ed] p-4 text-sm font-semibold leading-6 text-[#8a5b12]">
+                        Pengambilan barang hanya diproses langsung di pos layanan agar admin bisa mencocokkan identitas dan bukti kepemilikan.
+                    </div>
+                </template>
             </aside>
         </section>
         <ImagePreviewModal

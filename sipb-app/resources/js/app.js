@@ -21,12 +21,21 @@ createInertiaApp({
 
         const loading = document.getElementById('sipb-loading');
         if (loading) {
-            const img = loading.querySelector('img');
-            if (img && !img.complete) {
-                img.onload = () => loading.remove();
-            } else {
-                loading.remove();
-            }
+            const hideLoading = () => {
+                loading.style.transition = 'opacity 0.5s ease, visibility 0.5s ease';
+                loading.style.opacity = '0';
+                loading.style.visibility = 'hidden';
+                setTimeout(() => loading.remove(), 500);
+            };
+
+            const minDelay = new Promise(resolve => setTimeout(resolve, 600));
+            const imgReady = new Promise(resolve => {
+                const img = loading.querySelector('img');
+                if (!img || img.complete) resolve();
+                else img.onload = resolve;
+            });
+
+            Promise.all([minDelay, imgReady]).then(hideLoading);
         }
     },
 });
