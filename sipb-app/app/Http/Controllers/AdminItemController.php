@@ -8,8 +8,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -209,7 +207,7 @@ class AdminItemController extends Controller
             'dailyStats' => $dailyStats,
             'storageStats' => [
                 'total_items' => \App\Models\FoundItem::count(),
-                'items_with_photo' => \App\Models\FoundItem::whereNotNull('photo_data')->count(),
+                'items_with_photo' => \App\Models\FoundItem::whereNotNull('photo_data')->orWhereNotNull('photo_path')->count(),
                 'total_photo_size_bytes' => (int) \App\Models\FoundItem::whereNotNull('photo_data')->sum(\Illuminate\Support\Facades\DB::raw('LENGTH(photo_data)')),
             ],
         ]);
@@ -398,8 +396,13 @@ class AdminItemController extends Controller
 
         $uploaded = \App\Models\UploadedPhoto::find($request->integer('uploaded_photo_id'));
         if ($uploaded) {
-            $data['photo_data'] = $uploaded->photo_data;
-            $data['photo_url'] = 'database:image';
+            if ($uploaded->photo_path) {
+                $data['photo_path'] = $uploaded->photo_path;
+                $data['photo_url'] = \Illuminate\Support\Facades\Storage::url($uploaded->photo_path);
+            } else {
+                $data['photo_data'] = $uploaded->photo_data;
+                $data['photo_url'] = 'database:image';
+            }
             $uploaded->update(['used_at' => now()]);
         }
 
@@ -434,17 +437,21 @@ class AdminItemController extends Controller
             if (!in_array($mime, $allowedMimes, true)) {
                 return back()->with('error', 'Foto harus berupa JPG, PNG, atau WEBP.');
             }
-            $data['photo_data'] = sprintf(
-                'data:%s;base64,%s',
-                $mime,
-                base64_encode($file->getContent()),
-            );
-            $data['photo_url'] = 'database:image';
+            $path = $file->store('photos', 'public');
+            $data['photo_path'] = $path;
+            $data['photo_data'] = null;
+            $data['photo_url'] = \Illuminate\Support\Facades\Storage::url($path);
         } elseif ($request->filled('uploaded_photo_id')) {
             $uploaded = \App\Models\UploadedPhoto::find($request->integer('uploaded_photo_id'));
             if ($uploaded) {
-                $data['photo_data'] = $uploaded->photo_data;
-                $data['photo_url'] = 'database:image';
+                if ($uploaded->photo_path) {
+                    $data['photo_path'] = $uploaded->photo_path;
+                    $data['photo_data'] = null;
+                    $data['photo_url'] = \Illuminate\Support\Facades\Storage::url($uploaded->photo_path);
+                } else {
+                    $data['photo_data'] = $uploaded->photo_data;
+                    $data['photo_url'] = 'database:image';
+                }
                 $uploaded->update(['used_at' => now()]);
             }
         }

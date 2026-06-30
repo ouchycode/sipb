@@ -19,7 +19,6 @@ import {
     Info,
     MapPin,
     PlusCircle,
-    RotateCcw,
     Save,
     Search,
     Trash2,
@@ -34,7 +33,7 @@ import Pagination from "../../Shared/Pagination.vue";
 import ActiveFilters from "../../Shared/ActiveFilters.vue";
 import FilterDrawer from "../../Shared/FilterDrawer.vue";
 import SearchToolbar from "../../Shared/SearchToolbar.vue";
-import { formatDate, statusClass, statusLabel } from "../../Shared/status";
+import { formatDate, maskNim, statusClass, statusLabel } from "../../Shared/status";
 
 const props = defineProps({
     items: Object,
@@ -91,8 +90,8 @@ async function fetchUploadedPhotos() {
         if (res.ok) {
             uploadedPhotos.value = await res.json();
         }
-    } catch {
-        // silently fail
+    } catch (err) {
+        console.warn('Failed to fetch uploaded photos:', err);
     }
 }
 
@@ -102,7 +101,7 @@ function selectUploadedPhoto(photo) {
     form.uploaded_photo_id = selectedUploadedPhotoId.value;
     if (selectedUploadedPhotoId.value) {
         form.photo = null;
-        photoPreview.value = photo.photo_data;
+        photoPreview.value = photo.photo_url;
         photoName.value = "Dari galeri upload";
     } else {
         photoPreview.value = "";
@@ -140,7 +139,7 @@ function selectEditUploadedPhoto(photo) {
     editForm.uploaded_photo_id = editUploadedPhotoId.value;
     if (editUploadedPhotoId.value) {
         editForm.photo = null;
-        editPhotoPreview.value = photo.photo_data;
+        editPhotoPreview.value = photo.photo_url;
         editPhotoName.value = "Dari galeri upload";
     } else {
         editPhotoPreview.value = "";
@@ -922,7 +921,7 @@ onBeforeUnmount(() => {
                             >
                                 <template v-if="selectedPhoto">
                                     <img
-                                        :src="selectedPhoto.photo_data"
+                                        :src="selectedPhoto.photo_url"
                                         class="h-10 w-10 shrink-0 rounded object-cover"
                                     />
                                     <span
@@ -982,7 +981,7 @@ onBeforeUnmount(() => {
                                             @click="selectUploadedPhoto(photo)"
                                         >
                                             <img
-                                                :src="photo.photo_data"
+                                                :src="photo.photo_url"
                                                 alt=""
                                                 class="h-full w-full object-cover"
                                             />
@@ -1511,7 +1510,7 @@ onBeforeUnmount(() => {
                                     {{ item.finder_name || "-" }}
                                 </p>
                                 <p class="text-xs text-[#9da3b1]">
-                                    {{ item.finder_nim || "" }}
+                                    {{ maskNim(item.finder_nim) }}
                                 </p>
                             </td>
                             <td
@@ -2317,7 +2316,7 @@ onBeforeUnmount(() => {
                             >
                                 <template v-if="editSelectedPhoto">
                                     <img
-                                        :src="editSelectedPhoto.photo_data"
+                                        :src="editSelectedPhoto.photo_url"
                                         class="h-10 w-10 shrink-0 rounded object-cover"
                                     />
                                     <span
@@ -2380,7 +2379,7 @@ onBeforeUnmount(() => {
                                             "
                                         >
                                             <img
-                                                :src="photo.photo_data"
+                                                :src="photo.photo_url"
                                                 alt=""
                                                 class="h-full w-full object-cover"
                                             />

@@ -27,7 +27,11 @@ class AdminPhotoController extends Controller
         }
 
         return response()->json(
-            $query->latest()->limit(50)->get(['id', 'photo_data', 'created_at'])->toArray()
+            $query->latest()->limit(50)->get()->map(fn (UploadedPhoto $p) => [
+                'id' => $p->id,
+                'photo_url' => $p->photo_path ? \Illuminate\Support\Facades\Storage::url($p->photo_path) : $p->photo_data,
+                'created_at' => $p->created_at->toISOString(),
+            ])
         );
     }
 
@@ -37,7 +41,13 @@ class AdminPhotoController extends Controller
             ->whereNull('used_at')
             ->latest()
             ->limit(50)
-            ->get(['id', 'photo_data', 'created_at', 'used_at'])
+            ->get()
+            ->map(fn (UploadedPhoto $p) => [
+                'id' => $p->id,
+                'photo_url' => $p->photo_path ? \Illuminate\Support\Facades\Storage::url($p->photo_path) : $p->photo_data,
+                'created_at' => $p->created_at->toISOString(),
+                'used_at' => $p->used_at?->toISOString(),
+            ])
             ->toArray();
     }
 
@@ -53,22 +63,17 @@ class AdminPhotoController extends Controller
         ]);
 
         $file = $request->file('photo');
-        $mime = $file->getMimeType();
-
-        $photoData = sprintf(
-            'data:%s;base64,%s',
-            $mime,
-            base64_encode($file->getContent()),
-        );
+        $path = $file->store('photos', 'public');
 
         $photo = UploadedPhoto::create([
             'user_id' => $request->user()->id,
-            'photo_data' => $photoData,
+            'photo_data' => null,
+            'photo_path' => $path,
         ]);
 
         return response()->json([
             'id' => $photo->id,
-            'photo_data' => $photoData,
+            'photo_url' => \Illuminate\Support\Facades\Storage::url($path),
             'created_at' => $photo->created_at->toISOString(),
         ]);
     }

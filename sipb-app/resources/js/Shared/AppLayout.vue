@@ -1,8 +1,6 @@
 <script setup>
 import { Link, router, usePage } from "@inertiajs/vue3";
 import {
-    AlertTriangle,
-    CheckCircle2,
     ChevronRight,
     ChevronDown,
     ClipboardList,
@@ -12,8 +10,6 @@ import {
     Image,
     LayoutDashboard,
     ListChecks,
-    LogOut,
-    LogIn,
     Search,
     User,
     UsersRound,

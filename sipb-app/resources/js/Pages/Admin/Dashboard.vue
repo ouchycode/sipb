@@ -38,8 +38,8 @@ async function fetchInsights() {
         if (res.ok) {
             insightsData.value = await res.json();
         }
-    } catch {
-        // fallback to existing data
+    } catch (err) {
+        console.warn('Failed to fetch insights:', err);
     }
 }
 

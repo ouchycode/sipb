@@ -17,7 +17,7 @@ import FilterDrawer from "../../Shared/FilterDrawer.vue";
 import ImagePreviewModal from "../../Shared/ImagePreviewModal.vue";
 import Pagination from "../../Shared/Pagination.vue";
 import SearchToolbar from "../../Shared/SearchToolbar.vue";
-import { formatDate, statusClass, statusLabel } from "../../Shared/status";
+import { formatDate, maskNim, statusClass, statusLabel } from "../../Shared/status";
 
 const props = defineProps({
     items: Object,
@@ -320,7 +320,7 @@ onBeforeUnmount(() => {
                                 >
                                 {{ item.claimant_name || "-" }}
                                 <span v-if="item.claimant_nim"
-                                    >({{ item.claimant_nim }})</span
+                                    >({{ maskNim(item.claimant_nim) }})</span
                                 >
                             </p>
                             <p v-if="item.validation_notes">
@@ -614,7 +614,7 @@ onBeforeUnmount(() => {
                                 <p
                                     class="mt-0.5 truncate text-xs font-semibold text-[#747a8b]"
                                 >
-                                    {{ item.claimant_nim || "NIM tidak diisi" }}
+                                    {{ maskNim(item.claimant_nim) || "NIM tidak diisi" }}
                                 </p>
                                 <p
                                     v-if="item.validation_notes"

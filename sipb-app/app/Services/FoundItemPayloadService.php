@@ -18,30 +18,12 @@ class FoundItemPayloadService
             'location' => $item->location,
             'found_at' => $item->found_at?->toISOString(),
             'published_at' => $item->published_at?->toISOString(),
-            'photo_url' => $item->photo_data ?: $item->photo_url,
+            'photo_url' => $item->photo_path ? \Illuminate\Support\Facades\Storage::url($item->photo_path) : ($item->photo_data ?: $item->photo_url),
             'status' => $item->status,
             'claimer_name' => $item->claimant_name,
             'claimed_at' => $item->claimed_at?->toISOString(),
             'finder_name' => $item->finder_name,
 
-        ];
-    }
-
-    public function tracking(FoundItem $item): array
-    {
-        return [
-            'id' => $item->id,
-            'code' => $item->trackingCode(),
-            'name' => $item->name,
-
-            'category' => $item->category,
-            'location' => $item->location,
-            'found_at' => $item->found_at?->toISOString(),
-            'published_at' => $item->published_at?->toISOString(),
-            'claimed_at' => $item->claimed_at?->toISOString(),
-            'rejected_at' => $item->rejected_at?->toISOString(),
-            'expired_at' => $item->expired_at?->toISOString(),
-            'status' => $item->status,
         ];
     }
 
@@ -54,7 +36,7 @@ class FoundItemPayloadService
             'description' => $item->description,
             'location' => $item->location,
             'found_at' => $item->found_at?->toISOString(),
-            'photo_url' => $item->photo_data ?: $item->photo_url,
+            'photo_url' => $item->photo_path ? \Illuminate\Support\Facades\Storage::url($item->photo_path) : ($item->photo_data ?: $item->photo_url),
             'status' => $item->status,
             'published_at' => $item->published_at?->toISOString(),
             'claimed_at' => $item->claimed_at?->toISOString(),

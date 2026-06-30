@@ -20,6 +20,13 @@ export function statusClass(status) {
     }[status] ?? 'border-[#747a8b]/20 bg-[#f6f7fa] text-[#747a8b]';
 }
 
+export function maskNim(nim) {
+    if (!nim) return '-';
+    const str = String(nim);
+    if (str.length <= 4) return str;
+    return '*'.repeat(str.length - 4) + str.slice(-4);
+}
+
 export function formatDate(value, options = {}) {
     if (!value) {
         return '-';

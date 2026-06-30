@@ -202,7 +202,7 @@ onBeforeUnmount(() => {
                 >
                     <div class="aspect-square">
                         <img
-                            :src="photo.photo_data"
+                            :src="photo.photo_url"
                             alt="Uploaded photo"
                             class="h-full w-full object-cover"
                         />

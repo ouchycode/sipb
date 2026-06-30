@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'found_at',
     'photo_url',
     'photo_data',
+    'photo_path',
     'status',
     'published_at',
     'claimed_at',
@@ -30,7 +31,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'admin_notes',
     'validation_notes',
     'managed_by',
-    'submission_token_id',
     'pickup_checklist',
 ])]
 class FoundItem extends Model
@@ -66,13 +66,6 @@ class FoundItem extends Model
     public function audits(): HasMany
     {
         return $this->hasMany(StatusAudit::class);
-    }
-
-
-
-    public function submissionToken(): BelongsTo
-    {
-        return $this->belongsTo(QrAccessToken::class, 'submission_token_id');
     }
 
     public function scopeVisibleToPublic(Builder $query): Builder

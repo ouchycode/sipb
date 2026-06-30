@@ -1,6 +1,6 @@
 <script setup>
 import { Link, Head } from '@inertiajs/vue3';
-import { ArrowLeft, CalendarDays, Check, ClipboardCheck, Copy, Info, MapPin } from '@lucide/vue';
+import { ArrowLeft, CalendarDays, Check, ClipboardCheck, Info, MapPin } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import AppLayout from '../../Shared/AppLayout.vue';
 import ImagePreviewModal from '../../Shared/ImagePreviewModal.vue';

@@ -2,7 +2,7 @@
 import { ref, watch } from "vue";
 import { Head, router, Link } from "@inertiajs/vue3";
 import AppLayout from "../../Shared/AppLayout.vue";
-import { ChevronRight, Home, Search, Calendar, MonitorPlay } from "@lucide/vue";
+import { ChevronLeft, ChevronRight, Calendar } from "@lucide/vue";
 
 const props = defineProps({
     user: Object,
@@ -317,8 +317,11 @@ const defaultFoto = "/assets/logo-uym.png";
                                     ? 'bg-[#2737c9] text-white'
                                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
                             ]"
-                            v-html="link.label"
-                        ></button>
+                        >
+                            <ChevronLeft v-if="idx === 0" class="h-4 w-4" />
+                            <ChevronRight v-else-if="idx === audits.links.length - 1" class="h-4 w-4" />
+                            <span v-else>{{ link.label }}</span>
+                        </button>
                     </div>
                 </div>
             </div>

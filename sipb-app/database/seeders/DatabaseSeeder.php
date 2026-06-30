@@ -18,12 +18,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $adminPassword = env('SEEDER_ADMIN_PASSWORD', 'password');
         $admin = User::updateOrCreate(
-            ['email' => 'admin@sipb.test'],
+            ['email' => env('SEEDER_ADMIN_EMAIL', 'admin@sipb.test')],
             [
                 'name' => 'Admin Resepsionis',
                 'role' => User::ROLE_SUPER_ADMIN,
-                'password' => Hash::make('password'),
+                'password' => Hash::make($adminPassword),
             ],
         );
 

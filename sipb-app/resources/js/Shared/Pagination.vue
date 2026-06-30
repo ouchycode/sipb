@@ -58,7 +58,7 @@ function onPerPageChange(event) {
                         v-else-if="index === meta.links.length - 1"
                         class="h-4 w-4"
                     />
-                    <span v-else v-html="link.label"></span>
+                    <span v-else>{{ link.label }}</span>
                 </Link>
                 <span
                     v-else
@@ -69,7 +69,7 @@ function onPerPageChange(event) {
                         v-else-if="index === meta.links.length - 1"
                         class="h-4 w-4"
                     />
-                    <span v-else v-html="link.label"></span>
+                    <span v-else>{{ link.label }}</span>
                 </span>
             </template>
         </div>

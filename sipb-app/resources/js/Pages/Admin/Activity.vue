@@ -1,6 +1,6 @@
 <script setup>
 import { Link, router } from "@inertiajs/vue3";
-import { ArrowRight, CalendarDays, Download, Filter, Globe2, ListChecks, Search, X } from "@lucide/vue";
+import { ArrowRight, CalendarDays, Download, Filter, Globe2, Search, X } from "@lucide/vue";
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import ActiveFilters from "../../Shared/ActiveFilters.vue";
 import AppLayout from "../../Shared/AppLayout.vue";

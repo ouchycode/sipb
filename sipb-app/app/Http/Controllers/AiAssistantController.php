@@ -266,7 +266,7 @@ class AiAssistantController extends Controller
 
             $collection = $query->latest('published_at')
                 ->limit($limit)
-                ->get(['id', 'name', 'category', 'location', 'photo_url', 'photo_data', 'description', 'found_at']);
+                ->get(['id', 'name', 'category', 'location', 'photo_url', 'photo_data', 'photo_path', 'description', 'found_at']);
 
             $items = $collection->map(fn (FoundItem $item) => sprintf(
                 '- ID:%s | [%s] — %s, %s — %s. %s',
@@ -362,7 +362,7 @@ PROMPT;
             'items' => $collection->map(fn (FoundItem $item) => [
                 'id' => $item->id,
                 'name' => $item->name,
-                'photo_url' => $item->photo_data ?: $item->photo_url,
+                'photo_url' => $item->photo_path ? \Illuminate\Support\Facades\Storage::url($item->photo_path) : ($item->photo_data ?: $item->photo_url),
             ])->values()->toArray(),
         ];
     }
